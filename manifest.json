@@ -1,0 +1,8 @@
+{
+"name":"Expired Control",
+"short_name":"Expired",
+"start_url":"/login.html",
+"display":"standalone",
+"background_color":"#f4f6f8",
+"theme_color":"#0d6efd"
+}
