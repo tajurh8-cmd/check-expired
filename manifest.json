@@ -1,16 +1,8 @@
 {
-  "name": "Expired Control",
-  "short_name": "Expired",
-  "description": "Aplikasi monitoring dan pengingat produk expired per toko.",
-  "id": "./",
-  "start_url": "./login.html",
-  "scope": "./",
-  "display": "standalone",
-  "orientation": "portrait-primary",
-  "background_color": "#f4f6f8",
-  "theme_color": "#0d6efd",
-  "icons": [
-    {"src":"./icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
-    {"src":"./icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}
-  ]
+  "name":"ExpiCheck - Check Expired, Protect Sales",
+  "short_name":"ExpiCheck",
+  "description":"Aplikasi monitoring produk expired per toko.",
+  "id":"./","start_url":"./login.html","scope":"./","display":"standalone","orientation":"portrait-primary",
+  "background_color":"#f2f5fa","theme_color":"#0d47a1",
+  "icons":[{"src":"./icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},{"src":"./icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}]
 }

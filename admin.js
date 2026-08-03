@@ -13,12 +13,13 @@ let users=[],stores=[],editingStoreId=null,userModal;
 
 onSnapshot(collection(db,"stores"),snap=>{
   stores=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>String(a.storeid||a.id).localeCompare(String(b.storeid||b.id)));
-  renderStores(); fillStoreOptions();
+  renderStores(); fillStoreOptions(); const el=document.getElementById("summaryStores"); if(el) el.textContent=stores.length;
 },e=>$("storeList").innerHTML=`<div class="alert alert-danger">${esc(e.message)}</div>`);
 
 onSnapshot(collection(db,"users"),snap=>{
   users=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>String(a.username||"").localeCompare(String(b.username||"")));
   $("pendingBadge").innerText=users.filter(x=>x.active!==true).length;
+  const su=document.getElementById("summaryUsers"),sa=document.getElementById("summaryActive"),sp=document.getElementById("summaryPending"); if(su)su.textContent=users.length;if(sa)sa.textContent=users.filter(x=>x.active===true).length;if(sp)sp.textContent=users.filter(x=>x.active!==true).length;
   renderUsers();
 },e=>$("userList").innerHTML=`<div class="alert alert-danger">${esc(e.message)}</div>`);
 

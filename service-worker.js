@@ -1,4 +1,4 @@
-const CACHE_NAME = "expired-control-v4";
+const CACHE_NAME = "expicheck-ui-v5";
 const APP_SHELL = [
   "./",
   "./login.html",
@@ -10,6 +10,7 @@ const APP_SHELL = [
   "./app.js",
   "./admin.js",
   "./manifest.json",
+  "./style.css",
   "./icon-192.png",
   "./icon-512.png"
 ];
