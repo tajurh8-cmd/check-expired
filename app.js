@@ -22,6 +22,11 @@ const btnScan = document.getElementById("btnScan");
 const scannerBox = document.getElementById("scannerBox");
 const video = document.getElementById("video");
 const btnCloseScan = document.getElementById("btnCloseScan");
+const newProductBox = document.getElementById("newProductBox");
+const newProductName = document.getElementById("newProductName");
+const newProductRh = document.getElementById("newProductRh");
+const btnCreateProduct = document.getElementById("btnCreateProduct");
+const newProductMsg = document.getElementById("newProductMsg");
 
 const currentUser = JSON.parse(localStorage.getItem("user") || "null");
 if (!currentUser?.storeid) {
@@ -105,12 +110,19 @@ async function lookup(b) {
   const snap = await getDocs(qProduct);
   if (snap.empty) {
     descEl.value = "❌ Tidak ditemukan";
-    descEl.dataset.rh = 30;
+    descEl.dataset.rh = "";
+    newProductBox.classList.remove("d-none");
+    newProductName.value = "";
+    newProductRh.value = "";
+    newProductMsg.textContent = "Barcode: " + b;
+    newProductName.focus();
     return false;
   }
   const data = snap.docs[0].data();
   descEl.value = data.DESKRIPSI || "-";
-  descEl.dataset.rh = data.RH || 30;
+  descEl.dataset.rh = data.RH ?? 30;
+  newProductBox.classList.add("d-none");
+  newProductMsg.textContent = "";
   return true;
 }
 
@@ -120,6 +132,46 @@ barcodeEl.addEventListener("change", async () => {
   await lookup(b);
   expiredEl.focus();
 });
+
+btnCreateProduct.onclick = async () => {
+  const barcode = barcodeEl.value.trim();
+  const name = newProductName.value.trim().toUpperCase();
+  const rh = Number(newProductRh.value);
+  if (!barcode || !name || !Number.isFinite(rh) || rh < 0) {
+    newProductMsg.textContent = "Nama produk dan RH wajib diisi dengan benar.";
+    newProductMsg.className = "small mt-2 text-danger";
+    return;
+  }
+  btnCreateProduct.disabled = true;
+  btnCreateProduct.textContent = "Menyimpan...";
+  try {
+    const existing = query(collection(db, "datasumber"), where("BARCODE", "==", barcode));
+    const existingSnap = await getDocs(existing);
+    if (!existingSnap.empty) throw new Error("Barcode sudah tersedia di master");
+    const productId = safeId(barcode);
+    await setDoc(doc(db, "datasumber", productId), {
+      BARCODE: barcode,
+      DESKRIPSI: name,
+      RH: rh,
+      active: true,
+      createdAt: new Date(),
+      createdBy: currentUser.userid,
+      createdByStore: currentUser.storeid
+    });
+    descEl.value = name;
+    descEl.dataset.rh = rh;
+    newProductBox.classList.add("d-none");
+    newProductMsg.textContent = "";
+    expiredEl.focus();
+    alert("Produk baru berhasil ditambahkan ke master");
+  } catch (err) {
+    newProductMsg.textContent = err.message || "Gagal menambah produk";
+    newProductMsg.className = "small mt-2 text-danger";
+  } finally {
+    btnCreateProduct.disabled = false;
+    btnCreateProduct.innerHTML = '<i class="bi bi-plus-circle me-2"></i>TAMBAH PRODUK BARU';
+  }
+};
 
 let reader = null;
 btnScan.onclick = async () => {
@@ -212,6 +264,8 @@ btnSave.onclick = async () => {
 
     barcodeEl.value = "";
     descEl.value = "";
+    descEl.dataset.rh = "";
+    newProductBox.classList.add("d-none");
     expiredEl.value = "";
     qtyEl.value = "";
     barcodeEl.focus();

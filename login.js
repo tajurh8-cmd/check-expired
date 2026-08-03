@@ -60,7 +60,8 @@ async function readUser(nik) {
     role: String(user.role || "USER").toUpperCase(),
     storeid: store.storeid,
     storename: store.storename,
-    password: user.password
+    password: user.password,
+    mustChangePassword: user.mustChangePassword === true
   };
 }
 
@@ -94,7 +95,16 @@ window.login = async function () {
     const user = await readUser(nik);
     if (user.password !== password) throw new Error("Password salah");
 
+    if (user.mustChangePassword === true) {
+      window.pendingPasswordUser = { ...user, nik, enteredPassword: password };
+      $("loginPanel").classList.add("d-none");
+      $("changePasswordPanel").classList.remove("d-none");
+      $("newPassword").focus();
+      return;
+    }
+
     delete user.password;
+    delete user.mustChangePassword;
     localStorage.setItem("user", JSON.stringify(user));
     window.location.href = "index.html";
   } catch (err) {
@@ -113,6 +123,7 @@ window.showRegister = function () {
 
 window.showLogin = function () {
   $("registerPanel").classList.add("d-none");
+  $("forgotPanel").classList.add("d-none");
   $("loginPanel").classList.remove("d-none");
   setMessage(msgEl, "");
   nikEl.focus();
@@ -205,3 +216,62 @@ passEl.addEventListener("keydown", e => {
 $("regConfirm").addEventListener("keydown", e => {
   if (e.key === "Enter") window.registerUser();
 });
+
+
+window.showForgot = function(){
+  $("loginPanel").classList.add("d-none");
+  $("registerPanel").classList.add("d-none");
+  $("forgotPanel").classList.remove("d-none");
+  setMessage($("forgotMsg"), "");
+  $("forgotNik").focus();
+};
+
+window.requestPasswordReset = async function(){
+  const nik=$("forgotNik").value.trim();
+  const storeid=$("forgotStoreid").value.trim().toUpperCase();
+  const btn=$("forgotBtn"), msg=$("forgotMsg");
+  setMessage(msg,"");
+  if(!nik||!storeid){setMessage(msg,"NIK dan kode toko wajib diisi");return;}
+  if(!/^\d{6,}$/.test(nik)){setMessage(msg,"NIK minimal 6 digit angka");return;}
+  btn.disabled=true; btn.textContent="Memproses...";
+  try{
+    const ref=doc(db,"users",nik);
+    const u=await getDoc(ref);
+    if(!u.exists() || String(u.data().storeid||"").toUpperCase()!==storeid) throw new Error("Data akun tidak sesuai");
+    if(u.data().active!==true) throw new Error("Akun belum aktif");
+    const temporaryPassword=nik.slice(-6);
+    await setDoc(ref,{
+      password:temporaryPassword,
+      mustChangePassword:true,
+      passwordResetAt:serverTimestamp()
+    },{merge:true});
+    setMessage(msg,"Password berhasil di-reset menjadi 6 digit terakhir NIK. Login lalu buat password baru.",true);
+    nikEl.value=nik;
+  }catch(e){setMessage(msg,e.message||"Reset gagal");}
+  finally{btn.disabled=false;btn.textContent="RESET PASSWORD";}
+};
+
+window.changeForcedPassword = async function(){
+  const pending=window.pendingPasswordUser;
+  const password=$("newPassword").value;
+  const confirm=$("confirmNewPassword").value;
+  const msg=$("changePasswordMsg"), btn=$("changePasswordBtn");
+  setMessage(msg,"");
+  if(!pending){setMessage(msg,"Sesi reset tidak ditemukan. Silakan login ulang.");return;}
+  if(password.length<6){setMessage(msg,"Password minimal 6 karakter");return;}
+  if(password===pending.enteredPassword){setMessage(msg,"Password baru tidak boleh sama dengan password sementara");return;}
+  if(password!==confirm){setMessage(msg,"Konfirmasi password tidak sama");return;}
+  btn.disabled=true; btn.textContent="Menyimpan...";
+  try{
+    await setDoc(doc(db,"users",pending.nik),{
+      password,
+      mustChangePassword:false,
+      passwordChangedAt:serverTimestamp()
+    },{merge:true});
+    const user={...pending};
+    delete user.password; delete user.mustChangePassword; delete user.nik; delete user.enteredPassword;
+    localStorage.setItem("user",JSON.stringify(user));
+    window.location.href="index.html";
+  }catch(e){setMessage(msg,e.message||"Gagal mengganti password");}
+  finally{btn.disabled=false;btn.textContent="SIMPAN PASSWORD";}
+};
