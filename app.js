@@ -227,7 +227,7 @@ btnSave.onclick = async () => {
 
     const tarik = tanggalTarik(exp, rh);
     const expKey = exp.toISOString().slice(0, 10).replace(/-/g, "");
-    const id = `${safeId(currentUser.storeid)}_${safeId(barcode)}_${expKey}`;
+    const id = `${safeId(currentUser.storeid)}_${safeId(currentUser.userid)}_${safeId(barcode)}_${expKey}`;
     const ref = doc(db, "edItems", id);
     const snap = await getDoc(ref);
 
@@ -235,7 +235,10 @@ btnSave.onclick = async () => {
       storeid: currentUser.storeid,
       storename: currentUser.storename,
       userid: currentUser.userid,
-      user: currentUser.username
+      user: currentUser.username,
+      inputByNik: currentUser.userid,
+      inputByName: currentUser.username,
+      inputByPhone: currentUser.phone || ""
     };
 
     if (snap.exists()) {

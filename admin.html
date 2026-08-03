@@ -44,10 +44,12 @@ if(!sessionUser || !['ADMIN','SUPERADMIN'].includes(role)) location.href='index.
       <div class="card shadow-sm mb-3"><div class="card-body">
         <h6 id="storeFormTitle">Daftarkan Toko</h6>
         <div class="row g-2">
-          <div class="col-md-3"><input id="storeid" class="form-control form-control-sm text-uppercase" placeholder="Kode toko, contoh BI33"></div>
-          <div class="col-md-5"><input id="storename" class="form-control form-control-sm text-uppercase" placeholder="Nama toko"></div>
-          <div class="col-md-2"><select id="storeActive" class="form-select form-select-sm"><option value="true">Aktif</option><option value="false">Nonaktif</option></select></div>
-          <div class="col-md-2 d-grid"><button id="saveStoreBtn" class="btn btn-primary btn-sm" onclick="saveStore()">Simpan</button></div>
+          <div class="col-md-3"><label class="form-label small mb-1">Kode toko</label><input id="storeid" class="form-control form-control-sm text-uppercase" placeholder="Contoh BI33"></div>
+          <div class="col-md-5"><label class="form-label small mb-1">Nama toko</label><input id="storename" class="form-control form-control-sm text-uppercase" placeholder="Nama toko"></div>
+          <div class="col-md-2"><label class="form-label small mb-1">Status toko</label><select id="storeActive" class="form-select form-select-sm"><option value="true">Aktif</option><option value="false">Nonaktif</option></select></div>
+          <div class="col-md-2"><label class="form-label small mb-1">Notifikasi WA</label><select id="waActive" class="form-select form-select-sm"><option value="true">Aktif</option><option value="false">Nonaktif</option></select></div>
+          <div class="col-md-10"><label class="form-label small mb-1">Token Fonnte toko</label><div class="input-group input-group-sm"><input id="fonnteToken" type="password" class="form-control" placeholder="Masukkan token Fonnte"><button class="btn btn-outline-secondary" type="button" onclick="toggleToken()"><i id="tokenEye" class="bi bi-eye"></i></button></div><div class="form-text">Token digunakan scheduler untuk mengirim pengingat atas nama toko ini.</div></div>
+          <div class="col-md-2 d-grid align-self-end"><button id="saveStoreBtn" class="btn btn-primary btn-sm" onclick="saveStore()">Simpan</button></div>
         </div>
         <div id="storeMsg" class="msg mt-2"></div>
       </div></div>

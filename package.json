@@ -1,0 +1,11 @@
+{
+  "name": "expicheck-wa-reminder",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "notify": "node scripts/notify-expired.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0"
+  }
+}

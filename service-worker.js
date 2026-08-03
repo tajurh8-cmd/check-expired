@@ -1,4 +1,4 @@
-const CACHE_NAME = "expicheck-ui-v7";
+const CACHE_NAME = "expicheck-wa-store-token-v1";
 const APP_SHELL = [
   "./",
   "./login.html",

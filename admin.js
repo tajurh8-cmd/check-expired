@@ -99,12 +99,15 @@ window.saveStore=async()=>{
     if(!/^[A-Z0-9_-]{2,15}$/.test(storeid))throw new Error("Format kode toko tidak valid");
     const ref=doc(db,"stores",storeid); const existing=await getDoc(ref);
     if(!editingStoreId&&existing.exists())throw new Error("Kode toko sudah terdaftar");
-    await setDoc(ref,{storeid,storename,active:$("storeActive").value==="true",updatedAt:serverTimestamp(),updatedBy:currentUser.userid,...(!existing.exists()?{createdAt:serverTimestamp(),createdBy:currentUser.userid}:{})},{merge:true});
+    const fonnteToken=$("fonnteToken").value.trim();
+    if($("waActive").value==="true"&&!fonnteToken)throw new Error("Token Fonnte wajib diisi jika notifikasi WA aktif");
+    await setDoc(ref,{storeid,storename,active:$("storeActive").value==="true",waActive:$("waActive").value==="true",fonnteToken,updatedAt:serverTimestamp(),updatedBy:currentUser.userid,...(!existing.exists()?{createdAt:serverTimestamp(),createdBy:currentUser.userid}:{})},{merge:true});
     msg.textContent="Toko berhasil disimpan";msg.className="msg mt-2 text-success";resetStoreForm();
   }catch(e){msg.textContent=e.message;msg.className="msg mt-2 text-danger";}
 };
 
-function resetStoreForm(){editingStoreId=null;$("storeid").value="";$("storeid").readOnly=false;$("storename").value="";$("storeActive").value="true";$("storeFormTitle").textContent="Daftarkan Toko";$("saveStoreBtn").textContent="Simpan";}
+function resetStoreForm(){editingStoreId=null;$("storeid").value="";$("storeid").readOnly=false;$("storename").value="";$("storeActive").value="true";$("waActive").value="true";$("fonnteToken").value="";$("fonnteToken").type="password";$("storeFormTitle").textContent="Daftarkan Toko";$("saveStoreBtn").textContent="Simpan";}
+window.toggleToken=()=>{const input=$("fonnteToken"),icon=$("tokenEye");input.type=input.type==="password"?"text":"password";icon.className=input.type==="password"?"bi bi-eye":"bi bi-eye-slash";};
 
 
 onSnapshot(collection(db,"datasumber"),snap=>{products=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>String(a.DESKRIPSI||"").localeCompare(String(b.DESKRIPSI||"")));renderProducts();});

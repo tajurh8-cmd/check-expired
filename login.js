@@ -24,6 +24,13 @@ const msgEl = $("msg");
 
 nikEl.focus();
 
+function normalizePhone(value) {
+  let phone = String(value || "").replace(/\D/g, "");
+  if (phone.startsWith("0")) phone = "62" + phone.slice(1);
+  if (phone.startsWith("8")) phone = "62" + phone;
+  return phone;
+}
+
 function setMessage(el, text, success = false) {
   el.textContent = text || "";
   el.classList.toggle("success", success);
@@ -61,7 +68,8 @@ async function readUser(nik) {
     storeid: store.storeid,
     storename: store.storename,
     password: user.password,
-    mustChangePassword: user.mustChangePassword === true
+    mustChangePassword: user.mustChangePassword === true,
+    phone: normalizePhone(user.phone || user.whatsapp || "")
   };
 }
 
@@ -154,11 +162,16 @@ window.registerUser = async function () {
   const nik = $("regNik").value.trim();
   const username = $("regNama").value.trim().toUpperCase();
   const storeid = $("regStoreid").value.trim().toUpperCase();
+  const phone = normalizePhone($("regPhone").value);
   const password = $("regPassword").value;
   const confirmPassword = $("regConfirm").value;
 
-  if (!nik || !username || !storeid || !password || !confirmPassword) {
+  if (!nik || !username || !storeid || !phone || !password || !confirmPassword) {
     setMessage(regMsg, "Semua data wajib diisi");
+    return;
+  }
+  if (!/^62\d{8,13}$/.test(phone)) {
+    setMessage(regMsg, "Nomor WhatsApp tidak valid. Gunakan nomor aktif Indonesia");
     return;
   }
   if (!/^\d+$/.test(nik)) {
@@ -191,6 +204,7 @@ window.registerUser = async function () {
       role: "USER",
       storeid: store.storeid,
       storename: store.storename,
+      phone,
       createdAt: serverTimestamp()
     });
 
