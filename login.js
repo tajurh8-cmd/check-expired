@@ -36,6 +36,8 @@ async function getStore(storeid) {
   const storeSnap = await getDoc(doc(db, "stores", id));
   if (!storeSnap.exists()) throw new Error(`Kode toko ${id} tidak terdaftar`);
 
+  if (storeSnap.data().active === false) throw new Error(`Toko ${id} sedang nonaktif`);
+
   const store = storeSnap.data();
   return {
     storeid: String(store.storeid || id).toUpperCase(),
@@ -55,7 +57,7 @@ async function readUser(nik) {
   return {
     userid: user.userid || nik,
     username: user.username || "-",
-    role: user.role || "USER",
+    role: String(user.role || "USER").toUpperCase(),
     storeid: store.storeid,
     storename: store.storename,
     password: user.password

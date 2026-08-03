@@ -42,3 +42,28 @@ PERBAIKAN MULTI TOKO
 9. FIRESTORE RULES
    Pastikan Firestore Rules mengizinkan pembuatan dokumen user baru dari halaman register.
    Jangan izinkan user mengubah active atau role miliknya sendiri pada sistem produksi.
+
+=== ADMIN PANEL ===
+File baru: admin.html dan admin.js
+
+Fitur:
+- Menambah dan mengedit toko pada koleksi stores.
+- Mengaktifkan/nonaktifkan toko.
+- Melihat akun yang menunggu persetujuan.
+- Mengaktifkan/nonaktifkan user.
+- Mengubah role USER/ADMIN.
+- Memindahkan user ke toko lain.
+- Reset password sementara.
+
+MEMBUAT ADMIN PERTAMA (SATU KALI DI FIREBASE)
+1. Buka Firestore > users.
+2. Pilih dokumen NIK milik admin.
+3. Ubah field:
+   active = true (Boolean)
+   role = ADMIN (String)
+   storeid = BI33 (atau kode toko admin)
+4. Logout lalu login kembali.
+5. Tombol Admin akan muncul di dashboard.
+
+CATATAN KEAMANAN
+Aplikasi lama masih menyimpan password sebagai teks di Firestore. Untuk penggunaan serius, sebaiknya migrasikan login ke Firebase Authentication dan gunakan Firestore Security Rules. Pembatasan halaman admin di JavaScript saja bukan pengamanan database yang cukup.

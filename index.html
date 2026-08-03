@@ -34,6 +34,7 @@ if(!localStorage.getItem("user")) location.href="login.html";
     <div class="label" id="userInfo"></div>
   </div>
   <div class="d-flex gap-2">
+    <a href="admin.html" id="adminBtn" class="btn btn-sm btn-dark d-none">Admin</a>
     <a href="input.html" class="btn btn-sm btn-primary">+ Input</a>
     <button class="btn btn-sm btn-outline-secondary" onclick="logout()">Logout</button>
   </div>
@@ -58,6 +59,7 @@ if(!localStorage.getItem("user")) location.href="login.html";
 <script>
 const u = JSON.parse(localStorage.getItem("user"));
 document.getElementById("userInfo").innerText = `${u.username} (${u.role||"-"}) • ${u.storeid} - ${u.storename}`;
+if(["ADMIN","SUPERADMIN"].includes(String(u.role||"").toUpperCase())) document.getElementById("adminBtn").classList.remove("d-none");
 function logout(){ localStorage.removeItem("user"); location.href="login.html"; }
 </script>
 </body>
