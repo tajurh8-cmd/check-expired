@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, doc, getDoc, setDoc, updateDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, query, where, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 initializeApp({apiKey:"AIzaSyD_I1HSrulXlPCj9_U_FhSfsYQhz-DxbMk",authDomain:"dbplu-62d92.firebaseapp.com",projectId:"dbplu-62d92"});
 const db=getFirestore();
@@ -11,18 +11,8 @@ const $=id=>document.getElementById(id);
 const esc=v=>String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
 let users=[],stores=[],products=[],resetRequests=[],editingStoreId=null,userModal,productModal;
 
-onSnapshot(collection(db,"stores"),snap=>{
-  stores=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>String(a.storeid||a.id).localeCompare(String(b.storeid||b.id)));
-  renderStores(); fillStoreOptions(); const el=document.getElementById("summaryStores"); if(el) el.textContent=stores.length;
-},e=>$("storeList").innerHTML=`<div class="alert alert-danger">${esc(e.message)}</div>`);
-
-onSnapshot(collection(db,"users"),snap=>{
-  users=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>String(a.username||"").localeCompare(String(b.username||"")));
-  $("pendingBadge").innerText=users.filter(x=>x.active!==true).length;
-  const su=document.getElementById("summaryUsers"),sa=document.getElementById("summaryActive"),sp=document.getElementById("summaryPending"); if(su)su.textContent=users.length;if(sa)sa.textContent=users.filter(x=>x.active===true).length;if(sp)sp.textContent=users.filter(x=>x.active!==true).length;
-  renderUsers();
-},e=>$("userList").innerHTML=`<div class="alert alert-danger">${esc(e.message)}</div>`);
-
+async function loadStores(){try{if(currentRole==="SUPERADMIN"){const snap=await getDocs(query(collection(db,"stores"),limit(200)));stores=snap.docs.map(d=>({id:d.id,...d.data()}));}else{const one=await getDoc(doc(db,"stores",currentUser.storeid));stores=one.exists()?[{id:one.id,...one.data()}]:[];}stores.sort((a,b)=>String(a.storeid||a.id).localeCompare(String(b.storeid||b.id)));renderStores();fillStoreOptions();const el=$("summaryStores");if(el)el.textContent=stores.length;}catch(e){$("storeList").innerHTML=`<div class="alert alert-danger">${esc(e.message)}</div>`;}}
+async function loadUsers(){try{const q=currentRole==="SUPERADMIN"?query(collection(db,"users"),limit(300)):query(collection(db,"users"),where("storeid","==",currentUser.storeid),limit(200));const snap=await getDocs(q);users=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>String(a.username||"").localeCompare(String(b.username||"")));$("pendingBadge").innerText=users.filter(x=>x.active!==true).length;const su=$("summaryUsers"),sa=$("summaryActive"),sp=$("summaryPending");if(su)su.textContent=users.length;if(sa)sa.textContent=users.filter(x=>x.active===true).length;if(sp)sp.textContent=users.filter(x=>x.active!==true).length;renderUsers();}catch(e){$("userList").innerHTML=`<div class="alert alert-danger">${esc(e.message)}</div>`;}}
 window.renderUsers=()=>{
   const q=$("userSearch").value.toLowerCase().trim(); const status=$("userStatus").value;
   const rows=users.filter(x=>{
@@ -46,7 +36,7 @@ window.renderUsers=()=>{
 
 window.quickActivate=async id=>{
   if(!confirm("Aktifkan akun ini?"))return;
-  await updateDoc(doc(db,"users",id),{active:true,updatedAt:serverTimestamp(),updatedBy:currentUser.userid});
+  await updateDoc(doc(db,"users",id),{active:true,updatedAt:serverTimestamp(),updatedBy:currentUser.userid});await loadUsers();
 };
 
 window.openUser=id=>{
@@ -71,7 +61,7 @@ window.saveUser=async()=>{
     if(id===String(currentUser.userid)&&role!==currentRole)throw new Error("Admin tidak boleh mengubah role akun sendiri");
     const payload={username:$("editName").value.trim().toUpperCase(),storeid,storename:store.storename||storeid,role,active:$("editActive").value==="true",updatedAt:serverTimestamp(),updatedBy:currentUser.userid};
     const pw=$("editPassword").value; if(pw){if(pw.length<6)throw new Error("Password minimal 6 karakter");payload.password=pw;}
-    await updateDoc(doc(db,"users",id),payload); $("userMsg").textContent="Berhasil disimpan"; $("userMsg").className="msg mt-2 text-success"; setTimeout(()=>userModal.hide(),700);
+    await updateDoc(doc(db,"users",id),payload); $("userMsg").textContent="Berhasil disimpan"; $("userMsg").className="msg mt-2 text-success"; setTimeout(()=>userModal.hide(),700);await loadUsers();
   }catch(e){$("userMsg").textContent=e.message;$("userMsg").className="msg mt-2 text-danger";}
 };
 
@@ -102,7 +92,7 @@ window.saveStore=async()=>{
     const fonnteToken=$("fonnteToken").value.trim();
     if($("waActive").value==="true"&&!fonnteToken)throw new Error("Token Fonnte wajib diisi jika notifikasi WA aktif");
     await setDoc(ref,{storeid,storename,active:$("storeActive").value==="true",waActive:$("waActive").value==="true",fonnteToken,updatedAt:serverTimestamp(),updatedBy:currentUser.userid,...(!existing.exists()?{createdAt:serverTimestamp(),createdBy:currentUser.userid}:{})},{merge:true});
-    msg.textContent="Toko berhasil disimpan";msg.className="msg mt-2 text-success";resetStoreForm();
+    msg.textContent="Toko berhasil disimpan";msg.className="msg mt-2 text-success";resetStoreForm();await loadStores();
   }catch(e){msg.textContent=e.message;msg.className="msg mt-2 text-danger";}
 };
 
@@ -110,11 +100,16 @@ function resetStoreForm(){editingStoreId=null;$("storeid").value="";$("storeid")
 window.toggleToken=()=>{const input=$("fonnteToken"),icon=$("tokenEye");input.type=input.type==="password"?"text":"password";icon.className=input.type==="password"?"bi bi-eye":"bi bi-eye-slash";};
 
 
-onSnapshot(collection(db,"datasumber"),snap=>{products=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>String(a.DESKRIPSI||"").localeCompare(String(b.DESKRIPSI||"")));renderProducts();});
-onSnapshot(collection(db,"passwordResetRequests"),snap=>{resetRequests=snap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.status==="PENDING");$("resetBadge").textContent=resetRequests.length;renderResetRequests();});
+async function loadProducts(){try{const term=String($("productSearch")?.value||"").trim();let snap;if(/^\d{4,}$/.test(term))snap=await getDocs(query(collection(db,"datasumber"),where("BARCODE","==",term),limit(5)));else snap=await getDocs(query(collection(db,"datasumber"),limit(100)));products=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>String(a.DESKRIPSI||"").localeCompare(String(b.DESKRIPSI||"")));renderProducts();}catch(e){$("productList").innerHTML=`<div class="alert alert-danger">${esc(e.message)}</div>`;}}
+async function loadResetRequests(){try{const q=currentRole==="SUPERADMIN"?query(collection(db,"passwordResetRequests"),limit(100)):query(collection(db,"passwordResetRequests"),where("storeid","==",currentUser.storeid),limit(100));const snap=await getDocs(q);resetRequests=snap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.status==="PENDING");$("resetBadge").textContent=resetRequests.length;renderResetRequests();}catch(e){$("resetList").innerHTML=`<div class="alert alert-danger">${esc(e.message)}</div>`;}}
+
 
 window.renderProducts=()=>{const q=String($("productSearch")?.value||"").toLowerCase();const rows=products.filter(x=>`${x.BARCODE||""} ${x.DESKRIPSI||""}`.toLowerCase().includes(q)).slice(0,100);$("productList").innerHTML=rows.length?rows.map(x=>`<div class="card shadow-sm mb-2"><div class="card-body py-2 d-flex justify-content-between align-items-center"><div><b>${esc(x.DESKRIPSI||'-')}</b><div class="label">${esc(x.BARCODE||'-')} • RH: ${Number(x.RH)||0} hari</div></div><button class="btn btn-sm btn-outline-primary" onclick="openProduct('${esc(x.id)}')"><i class="bi bi-pencil"></i> Edit</button></div></div>`).join(""):`<div class="alert alert-light text-center">Produk tidak ditemukan.</div>`;};
 window.openProduct=id=>{const x=products.find(v=>v.id===id);if(!x)return;$("editProductId").value=id;$("editProductName").value=x.DESKRIPSI||"";$("editProductBarcode").value=x.BARCODE||"";$("editProductRh").value=Number(x.RH)||0;$("productMsg").textContent="";productModal=productModal||new bootstrap.Modal($("productModal"));productModal.show();};
-window.saveProductRh=async()=>{try{const id=$("editProductId").value;const rh=Number($("editProductRh").value);if(!Number.isInteger(rh)||rh<0||rh>3650)throw new Error("RH harus angka 0–3650 hari");await updateDoc(doc(db,"datasumber",id),{RH:rh,updatedAt:serverTimestamp(),updatedBy:currentUser.userid});$("productMsg").textContent="RH berhasil diperbarui";$("productMsg").className="msg mt-2 text-success";setTimeout(()=>productModal.hide(),600);}catch(e){$("productMsg").textContent=e.message;$("productMsg").className="msg mt-2 text-danger";}};
+window.saveProductRh=async()=>{try{const id=$("editProductId").value;const rh=Number($("editProductRh").value);if(!Number.isInteger(rh)||rh<0||rh>3650)throw new Error("RH harus angka 0–3650 hari");await updateDoc(doc(db,"datasumber",id),{RH:rh,updatedAt:serverTimestamp(),updatedBy:currentUser.userid});$("productMsg").textContent="RH berhasil diperbarui";$("productMsg").className="msg mt-2 text-success";setTimeout(()=>productModal.hide(),600);await loadProducts();}catch(e){$("productMsg").textContent=e.message;$("productMsg").className="msg mt-2 text-danger";}};
 window.renderResetRequests=()=>{$("resetList").innerHTML=resetRequests.length?resetRequests.map(x=>`<div class="card shadow-sm mb-2"><div class="card-body py-2"><b>${esc(x.username||'-')}</b><div class="label">NIK ${esc(x.nik||x.id)} • ${esc(x.storeid||'-')}</div><button class="btn btn-sm btn-primary mt-2" onclick="processReset('${esc(x.id)}')">Buat password sementara</button></div></div>`).join(""):`<div class="alert alert-light text-center">Tidak ada permintaan reset.</div>`;};
-window.processReset=async id=>{const r=resetRequests.find(x=>x.id===id);if(!r)return;if(currentRole!=="SUPERADMIN"&&String(r.storeid)!==String(currentUser.storeid))return alert("Hanya admin toko terkait yang boleh memproses");const pw=prompt("Masukkan password sementara minimal 6 karakter");if(!pw)return;if(pw.length<6)return alert("Minimal 6 karakter");await updateDoc(doc(db,"users",r.nik||id),{password:pw,updatedAt:serverTimestamp(),updatedBy:currentUser.userid});await updateDoc(doc(db,"passwordResetRequests",id),{status:"RESOLVED",resolvedAt:serverTimestamp(),resolvedBy:currentUser.userid});alert("Password sementara berhasil dibuat. Sampaikan langsung kepada user.");};
+window.processReset=async id=>{const r=resetRequests.find(x=>x.id===id);if(!r)return;if(currentRole!=="SUPERADMIN"&&String(r.storeid)!==String(currentUser.storeid))return alert("Hanya admin toko terkait yang boleh memproses");const pw=prompt("Masukkan password sementara minimal 6 karakter");if(!pw)return;if(pw.length<6)return alert("Minimal 6 karakter");await updateDoc(doc(db,"users",r.nik||id),{password:pw,updatedAt:serverTimestamp(),updatedBy:currentUser.userid});await updateDoc(doc(db,"passwordResetRequests",id),{status:"RESOLVED",resolvedAt:serverTimestamp(),resolvedBy:currentUser.userid});alert("Password sementara berhasil dibuat. Sampaikan langsung kepada user.");await loadResetRequests();};
+
+window.refreshAdminData=async()=>{await Promise.all([loadStores(),loadUsers(),loadProducts(),loadResetRequests()]);};
+window.searchProductsFirestore=()=>loadProducts();
+window.refreshAdminData();

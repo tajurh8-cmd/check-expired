@@ -30,7 +30,7 @@ if(!sessionUser || !['ADMIN','SUPERADMIN'].includes(role)) location.href='index.
   </ul>
 
   <div class="tab-content">
-    <section class="tab-pane fade show active" id="users">
+    <section class="tab-pane fade show active" id="users"><div class="text-end mb-2"><button class="btn btn-sm btn-outline-secondary" onclick="refreshAdminData()">Refresh data</button></div>
       <div class="card shadow-sm mb-3"><div class="card-body">
         <div class="row g-2">
           <div class="col-md-8"><input id="userSearch" class="form-control form-control-sm" placeholder="Cari NIK, nama, toko..." oninput="renderUsers()"></div>
@@ -57,7 +57,7 @@ if(!sessionUser || !['ADMIN','SUPERADMIN'].includes(role)) location.href='index.
       <div id="storeList"></div>
     </section>
 
-    <section class="tab-pane fade" id="products"><input id="productSearch" class="form-control form-control-sm mb-3" placeholder="Cari barcode atau produk..." oninput="renderProducts()"><div id="productList"></div></section>
+    <section class="tab-pane fade" id="products"><div class="d-flex gap-2 mb-2"><button class="btn btn-sm btn-outline-primary" onclick="searchProductsFirestore()">Cari/Muat 100</button><button class="btn btn-sm btn-outline-secondary" onclick="refreshAdminData()">Refresh</button></div><input id="productSearch" class="form-control form-control-sm mb-3" placeholder="Masukkan barcode lalu tekan Enter" onkeydown="if(event.key==='Enter')searchProductsFirestore()"><div id="productList"></div></section>
     <section class="tab-pane fade" id="resets"><div id="resetList"></div></section>
   </div>
 </div></div>

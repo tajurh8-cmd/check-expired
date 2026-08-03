@@ -1,4 +1,4 @@
-const CACHE_NAME = "expicheck-wa-store-token-v1";
+const CACHE_NAME = "expicheck-firestore-hemat-v2";
 const APP_SHELL = [
   "./",
   "./login.html",
