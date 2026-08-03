@@ -7,6 +7,11 @@
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
+
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#0d6efd">
+<link rel="apple-touch-icon" href="./icon-192.png">
+
 <style>
 body{background:#f4f6f8}
 .card{max-width:420px;margin:auto}
@@ -80,5 +85,11 @@ if(!localStorage.getItem("user")) location.href="login.html";
 
 <script src="https://unpkg.com/@zxing/library@0.20.0/umd/index.min.js"></script>
 <script type="module" src="app.js"></script>
+
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("./service-worker.js"));
+}
+</script>
 </body>
 </html>

@@ -67,3 +67,13 @@ MEMBUAT ADMIN PERTAMA (SATU KALI DI FIREBASE)
 
 CATATAN KEAMANAN
 Aplikasi lama masih menyimpan password sebagai teks di Firestore. Untuk penggunaan serius, sebaiknya migrasikan login ke Firebase Authentication dan gunakan Firestore Security Rules. Pembatasan halaman admin di JavaScript saja bukan pengamanan database yang cukup.
+
+
+=== BOOTSTRAP + PWA ===
+- Antarmuka menggunakan Bootstrap 5.3.2.
+- PWA aktif pada login, dashboard, input, dan admin.
+- Bisa dipasang dari menu browser: Tambahkan ke layar utama / Install app.
+- manifest memakai path relatif sehingga cocok untuk GitHub Pages subfolder /check-expired/.
+- Service worker menyimpan app shell dan aset yang pernah dibuka.
+- Data Firebase tetap membutuhkan internet agar realtime.
+- Setelah upload versi baru, lakukan hard refresh atau hapus cache situs bila tampilan lama masih muncul.
