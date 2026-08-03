@@ -6,54 +6,68 @@
 <title>Login | Expired Control</title>
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-<link rel="manifest" href="/manifest.json">
+<link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0d6efd">
 
 <style>
 body{
   background:#f4f6f8;
-  height:100vh;
+  min-height:100vh;
   display:flex;
   align-items:center;
   justify-content:center;
+  padding:16px;
 }
-.card{
-  width:100%;
-  max-width:380px;
-}
-.msg{
-  font-size:12px;
-  color:#dc3545;
-}
+.card{width:100%;max-width:390px}
+.msg{font-size:12px;color:#dc3545;min-height:18px}
+.msg.success{color:#198754}
+.switch-link{font-size:13px;text-align:center;margin-top:14px}
 </style>
 </head>
-
 <body>
 
 <div class="card shadow-sm">
   <div class="card-body">
     <h5 class="text-center mb-3">Expired Control</h5>
 
-    <input id="nik" class="form-control form-control-sm mb-2" placeholder="NIK">
-    <input id="nama" class="form-control form-control-sm mb-2" placeholder="Nama"
-           readonly tabindex="-1">
-    <input id="password" type="password" class="form-control form-control-sm mb-2"
-           placeholder="Password">
+    <!-- LOGIN -->
+    <div id="loginPanel">
+      <input id="nik" class="form-control form-control-sm mb-2" placeholder="NIK" inputmode="numeric">
+      <input id="nama" class="form-control form-control-sm mb-2" placeholder="Nama / Toko" readonly tabindex="-1">
+      <input id="password" type="password" class="form-control form-control-sm mb-2" placeholder="Password">
 
-    <div id="msg" class="msg mb-2"></div>
+      <div id="msg" class="msg mb-2"></div>
+      <button class="btn btn-primary btn-sm w-100" onclick="login()">Login</button>
 
-    <button class="btn btn-primary btn-sm w-100" onclick="login()">Login</button>
+      <div class="switch-link">
+        Belum punya akun? <button type="button" class="btn btn-link btn-sm p-0" onclick="showRegister()">Register</button>
+      </div>
+    </div>
+
+    <!-- REGISTER -->
+    <div id="registerPanel" class="d-none">
+      <input id="regNik" class="form-control form-control-sm mb-2" placeholder="NIK" inputmode="numeric">
+      <input id="regNama" class="form-control form-control-sm mb-2" placeholder="Nama lengkap">
+      <input id="regStoreid" class="form-control form-control-sm mb-2 text-uppercase" placeholder="Kode toko, contoh BI33">
+      <input id="regStorename" class="form-control form-control-sm mb-2" placeholder="Nama toko" readonly tabindex="-1">
+      <input id="regPassword" type="password" class="form-control form-control-sm mb-2" placeholder="Password minimal 6 karakter">
+      <input id="regConfirm" type="password" class="form-control form-control-sm mb-2" placeholder="Ulangi password">
+
+      <div id="regMsg" class="msg mb-2"></div>
+      <button id="registerBtn" class="btn btn-success btn-sm w-100" onclick="registerUser()">Daftar</button>
+
+      <div class="switch-link">
+        Sudah punya akun? <button type="button" class="btn btn-link btn-sm p-0" onclick="showLogin()">Kembali ke login</button>
+      </div>
+    </div>
   </div>
 </div>
 
 <script type="module" src="login.js"></script>
-
-<!-- SERVICE WORKER -->
 <script>
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/service-worker.js");
+  navigator.serviceWorker.register("service-worker.js");
 }
 </script>
-
 </body>
 </html>

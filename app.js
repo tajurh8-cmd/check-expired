@@ -4,7 +4,6 @@ import {
   updateDoc, getDocs, query, where, increment
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-/* ================= FIREBASE ================= */
 initializeApp({
   apiKey:"AIzaSyD_I1HSrulXlPCj9_U_FhSfsYQhz-DxbMk",
   authDomain:"dbplu-62d92.firebaseapp.com",
@@ -12,185 +11,215 @@ initializeApp({
 });
 const db = getFirestore();
 
-/* ================= ELEMENT ================= */
-const rakSelect=document.getElementById("rakSelect");
-const rakInput=document.getElementById("rakInput");
-const barcodeEl=document.getElementById("barcode");
-const descEl=document.getElementById("deskripsi");
-const expiredEl=document.getElementById("expired");
-const qtyEl=document.getElementById("qty");
-const btnSave=document.getElementById("btnSave");
+const rakSelect = document.getElementById("rakSelect");
+const rakInput = document.getElementById("rakInput");
+const barcodeEl = document.getElementById("barcode");
+const descEl = document.getElementById("deskripsi");
+const expiredEl = document.getElementById("expired");
+const qtyEl = document.getElementById("qty");
+const btnSave = document.getElementById("btnSave");
+const btnScan = document.getElementById("btnScan");
+const scannerBox = document.getElementById("scannerBox");
+const video = document.getElementById("video");
+const btnCloseScan = document.getElementById("btnCloseScan");
 
-const btnScan=document.getElementById("btnScan");
-const scannerBox=document.getElementById("scannerBox");
-const video=document.getElementById("video");
-const btnCloseScan=document.getElementById("btnCloseScan");
-
-const currentUser = JSON.parse(localStorage.getItem("user"));
-
-/* ================= UTIL ================= */
-function parseDate(v){
-  const n=v.replace(/\D/g,"");
-  if(n.length!==6 && n.length!==8) return null;
-  const d=n.slice(0,2), m=n.slice(2,4);
-  const y=n.length===6 ? "20"+n.slice(4) : n.slice(4);
-  const x=new Date(y,m-1,d);
-  return isNaN(x)?null:x;
+const currentUser = JSON.parse(localStorage.getItem("user") || "null");
+if (!currentUser?.storeid) {
+  localStorage.removeItem("user");
+  location.href = "login.html";
+  throw new Error("Sesi toko tidak valid");
 }
 
-function tanggalTarik(exp,rh){
-  const x=new Date(exp);
-  x.setDate(x.getDate()-Number(rh||30));
+document.getElementById("storeInfo").textContent = `${currentUser.storeid} - ${currentUser.storename}`;
+
+function parseDate(v) {
+  const n = String(v || "").replace(/\D/g, "");
+  if (n.length !== 6 && n.length !== 8) return null;
+  const d = n.slice(0, 2), m = n.slice(2, 4);
+  const y = n.length === 6 ? "20" + n.slice(4) : n.slice(4);
+  const x = new Date(Number(y), Number(m) - 1, Number(d));
+  if (isNaN(x.getTime()) || x.getDate() !== Number(d) || x.getMonth() !== Number(m) - 1) return null;
   return x;
 }
 
-function normalizeBarcode(v){
-  v=v.trim();
-  return v.length>1 ? v.slice(0,-1) : v;
+function tanggalTarik(exp, rh) {
+  const x = new Date(exp);
+  x.setDate(x.getDate() - Number(rh || 30));
+  return x;
 }
 
-/* ================= RAK ================= */
-async function loadRak(){
-  rakSelect.innerHTML="<option value=''>Pilih Rak</option>";
-  const s=await getDocs(collection(db,"Rak"));
-  s.forEach(d=>rakSelect.innerHTML+=`<option>${d.data().name}</option>`);
+function normalizeBarcode(v) {
+  v = String(v || "").trim();
+  return v.length > 1 ? v.slice(0, -1) : v;
 }
-loadRak();
 
-async function getRak(){
-  let r=rakSelect.value||rakInput.value.trim().toUpperCase();
-  if(!r) return "";
-  if(![...rakSelect.options].some(o=>o.value===r)){
-    await setDoc(doc(collection(db,"Rak")),{name:r});
-    rakSelect.innerHTML+=`<option>${r}</option>`;
+function safeId(v) {
+  return String(v).replace(/[^a-zA-Z0-9_-]/g, "_");
+}
+
+async function loadRak() {
+  rakSelect.innerHTML = "<option value=''>Pilih Rak</option>";
+  const qRak = query(collection(db, "Rak"), where("storeid", "==", currentUser.storeid));
+  const snap = await getDocs(qRak);
+  const names = [];
+  snap.forEach(d => {
+    const name = String(d.data().name || "").trim();
+    if (name) names.push(name);
+  });
+  names.sort().forEach(name => {
+    const opt = document.createElement("option");
+    opt.value = name;
+    opt.textContent = name;
+    rakSelect.appendChild(opt);
+  });
+}
+loadRak().catch(err => alert("Gagal memuat rak: " + err.message));
+
+async function getRak() {
+  const r = String(rakSelect.value || rakInput.value).trim().toUpperCase();
+  if (!r) return "";
+
+  if (![...rakSelect.options].some(o => o.value === r)) {
+    const rakId = `${safeId(currentUser.storeid)}_${safeId(r)}`;
+    await setDoc(doc(db, "Rak", rakId), {
+      name: r,
+      storeid: currentUser.storeid,
+      storename: currentUser.storename,
+      createdAt: new Date(),
+      createdBy: currentUser.userid
+    }, { merge: true });
+
+    const opt = document.createElement("option");
+    opt.value = r;
+    opt.textContent = r;
+    rakSelect.appendChild(opt);
   }
-  rakSelect.value=r; rakInput.value="";
+  rakSelect.value = r;
+  rakInput.value = "";
   return r;
 }
 
-/* ================= LOOKUP BARCODE ================= */
-async function lookup(b){
-  descEl.value="Mencari...";
-  const q=query(collection(db,"datasumber"),where("BARCODE","==",b));
-  const s=await getDocs(q);
-  if(s.empty){
-    descEl.value="❌ Tidak ditemukan";
-    descEl.dataset.rh=30;
-    return;
+async function lookup(b) {
+  descEl.value = "Mencari...";
+  const qProduct = query(collection(db, "datasumber"), where("BARCODE", "==", b));
+  const snap = await getDocs(qProduct);
+  if (snap.empty) {
+    descEl.value = "❌ Tidak ditemukan";
+    descEl.dataset.rh = 30;
+    return false;
   }
-  const d=s.docs[0].data();
-  descEl.value=d.DESKRIPSI;
-  descEl.dataset.rh=d.RH||30;
+  const data = snap.docs[0].data();
+  descEl.value = data.DESKRIPSI || "-";
+  descEl.dataset.rh = data.RH || 30;
+  return true;
 }
 
-/* ================= MANUAL INPUT ================= */
-barcodeEl.addEventListener("change",()=>{
-  const b=normalizeBarcode(barcodeEl.value);
-  barcodeEl.value=b;
-  lookup(b);
+barcodeEl.addEventListener("change", async () => {
+  const b = normalizeBarcode(barcodeEl.value);
+  barcodeEl.value = b;
+  await lookup(b);
   expiredEl.focus();
 });
 
-/* ================= SCANNER ================= */
-let reader=null;
-
+let reader = null;
 btnScan.onclick = async () => {
   scannerBox.classList.remove("d-none");
-
   if (!reader) reader = new ZXing.BrowserMultiFormatReader();
 
-  // 🔥 PAKSA PRIORITAS KAMERA BELAKANG
-  const constraints = {
-    video: {
-      facingMode: { exact: "environment" }
-    }
-  };
-
   try {
-    await reader.decodeFromConstraints(
-      constraints,
-      video,
-      (res) => {
-        if (res) {
-          const code = normalizeBarcode(res.text);
-          barcodeEl.value = code;
-          lookup(code);
-          reader.reset();
-          scannerBox.classList.add("d-none");
-          expiredEl.focus();
-        }
-      }
-    );
+    await reader.decodeFromConstraints({ video: { facingMode: { ideal: "environment" } } }, video, res => {
+      if (!res) return;
+      const code = normalizeBarcode(res.text);
+      barcodeEl.value = code;
+      lookup(code);
+      reader.reset();
+      scannerBox.classList.add("d-none");
+      expiredEl.focus();
+    });
   } catch (e) {
-    // ⚠️ FALLBACK JIKA BROWSER TIDAK DUKUNG facingMode
     const dev = await reader.listVideoInputDevices();
-    const cam =
-      dev.find(d => d.label.toLowerCase().includes("back")) ||
-      dev[dev.length - 1];
-
-    reader.decodeFromVideoDevice(
-      cam.deviceId,
-      video,
-      (res) => {
-        if (res) {
-          const code = normalizeBarcode(res.text);
-          barcodeEl.value = code;
-          lookup(code);
-          reader.reset();
-          scannerBox.classList.add("d-none");
-          expiredEl.focus();
-        }
-      }
-    );
+    const cam = dev.find(d => d.label.toLowerCase().includes("back")) || dev[dev.length - 1];
+    if (!cam) return alert("Kamera tidak ditemukan");
+    reader.decodeFromVideoDevice(cam.deviceId, video, res => {
+      if (!res) return;
+      const code = normalizeBarcode(res.text);
+      barcodeEl.value = code;
+      lookup(code);
+      reader.reset();
+      scannerBox.classList.add("d-none");
+      expiredEl.focus();
+    });
   }
 };
 
-btnCloseScan.onclick=()=>{
+btnCloseScan.onclick = () => {
   scannerBox.classList.add("d-none");
-  if(reader) reader.reset();
+  if (reader) reader.reset();
 };
 
-/* ================= SIMPAN ================= */
-btnSave.onclick=async()=>{
-  const rak=await getRak();
-  const exp=parseDate(expiredEl.value);
-  const qty=Number(qtyEl.value);
-  const rh=Number(descEl.dataset.rh)||30;
+btnSave.onclick = async () => {
+  btnSave.disabled = true;
+  try {
+    const rak = await getRak();
+    const exp = parseDate(expiredEl.value);
+    const qty = Number(qtyEl.value);
+    const rh = Number(descEl.dataset.rh) || 30;
+    const barcode = barcodeEl.value.trim();
 
-  if(!rak||!barcodeEl.value||!exp||!qty){
-    alert("Data belum lengkap");return;
+    if (!rak || !barcode || !exp || !Number.isFinite(qty) || qty <= 0) {
+      throw new Error("Data belum lengkap atau tidak valid");
+    }
+    if (!descEl.value || descEl.value.includes("Tidak ditemukan") || descEl.value === "Mencari...") {
+      throw new Error("Produk tidak ditemukan di master datasumber");
+    }
+
+    const tarik = tanggalTarik(exp, rh);
+    const expKey = exp.toISOString().slice(0, 10).replace(/-/g, "");
+    const id = `${safeId(currentUser.storeid)}_${safeId(barcode)}_${expKey}`;
+    const ref = doc(db, "edItems", id);
+    const snap = await getDoc(ref);
+
+    const identity = {
+      storeid: currentUser.storeid,
+      storename: currentUser.storename,
+      userid: currentUser.userid,
+      user: currentUser.username
+    };
+
+    if (snap.exists()) {
+      await updateDoc(ref, {
+        qty: increment(qty),
+        rak,
+        tanggalTarik: tarik,
+        RH: rh,
+        lastUpdate: new Date(),
+        ...identity
+      });
+    } else {
+      await setDoc(ref, {
+        barcode,
+        deskripsi: descEl.value,
+        rak,
+        expiredDate: exp,
+        tanggalTarik: tarik,
+        RH: rh,
+        qty,
+        createdAt: new Date(),
+        lastUpdate: new Date(),
+        ...identity
+      });
+    }
+
+    barcodeEl.value = "";
+    descEl.value = "";
+    expiredEl.value = "";
+    qtyEl.value = "";
+    barcodeEl.focus();
+    alert("Data berhasil disimpan");
+  } catch (err) {
+    console.error(err);
+    alert(err.message || "Gagal menyimpan data");
+  } finally {
+    btnSave.disabled = false;
   }
-
-  const tarik=tanggalTarik(exp,rh);
-  const id=`${barcodeEl.value}_${exp.toISOString().slice(0,10).replace(/-/g,"")}`;
-  const ref=doc(db,"edItems",id);
-  const snap=await getDoc(ref);
-
-  if(snap.exists()){
-    await updateDoc(ref,{
-      qty:increment(qty),
-      tanggalTarik:tarik,
-      RH:rh,
-      lastUpdate:new Date(),
-      user:currentUser.username
-    });
-  }else{
-    await setDoc(ref,{
-      barcode:barcodeEl.value,
-      deskripsi:descEl.value,
-      rak,
-      expiredDate:exp,
-      tanggalTarik:tarik,
-      RH:rh,
-      qty,
-      lastUpdate:new Date(),
-      user:currentUser.username
-    });
-  }
-
-  barcodeEl.value="";
-  descEl.value="";
-  expiredEl.value="";
-  qtyEl.value="";
-  barcodeEl.focus();
 };

@@ -57,7 +57,7 @@ if(!localStorage.getItem("user")) location.href="login.html";
 <script type="module" src="dashboard.js"></script>
 <script>
 const u = JSON.parse(localStorage.getItem("user"));
-document.getElementById("userInfo").innerText = `${u.username} (${u.role||"-"})`;
+document.getElementById("userInfo").innerText = `${u.username} (${u.role||"-"}) • ${u.storeid} - ${u.storename}`;
 function logout(){ localStorage.removeItem("user"); location.href="login.html"; }
 </script>
 </body>
