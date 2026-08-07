@@ -1,4 +1,4 @@
-const CACHE_NAME = "expicheck-firestore-hemat-v2";
+const CACHE_NAME = "expicheck-ui-v10";
 const APP_SHELL = [
   "./",
   "./login.html",

@@ -25,6 +25,8 @@ const btnCloseScan = document.getElementById("btnCloseScan");
 const newProductBox = document.getElementById("newProductBox");
 const newProductName = document.getElementById("newProductName");
 const newProductRh = document.getElementById("newProductRh");
+const newProductPlu = document.getElementById("newProductPlu");
+const newProductBarcode = document.getElementById("newProductBarcode");
 const btnCreateProduct = document.getElementById("btnCreateProduct");
 const newProductMsg = document.getElementById("newProductMsg");
 
@@ -53,9 +55,34 @@ function tanggalTarik(exp, rh) {
   return x;
 }
 
-function normalizeBarcode(v) {
-  v = String(v || "").trim();
-  return v.length > 1 ? v.slice(0, -1) : v;
+function normalizeCode(v) {
+  return String(v || "").trim();
+}
+
+// datasumber memiliki dua key berbeda: BARCODE dan PLU.
+// Input manual dicari ke field PLU, sedangkan hasil scanner dicari ke field BARCODE.
+let selectedProduct = null;
+let pendingLookup = { mode: "plu", barcode: "", plu: "" };
+
+function showToast(message, type = "success") {
+  let el = document.getElementById("appToast");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "appToast";
+    el.style.cssText = "position:fixed;left:50%;bottom:92px;transform:translateX(-50%) translateY(20px);z-index:10000;max-width:calc(100vw - 32px);padding:12px 16px;border-radius:12px;color:#fff;font-weight:700;font-size:14px;box-shadow:0 10px 30px rgba(0,0,0,.22);opacity:0;transition:.2s;pointer-events:none;text-align:center";
+    document.body.appendChild(el);
+  }
+  el.style.background = type === "error" ? "#dc2626" : type === "warning" ? "#d97706" : "#15803d";
+  el.textContent = message;
+  requestAnimationFrame(() => {
+    el.style.opacity = "1";
+    el.style.transform = "translateX(-50%) translateY(0)";
+  });
+  clearTimeout(window.__toastTimer);
+  window.__toastTimer = setTimeout(() => {
+    el.style.opacity = "0";
+    el.style.transform = "translateX(-50%) translateY(20px)";
+  }, 2400);
 }
 
 function safeId(v) {
@@ -78,7 +105,7 @@ async function loadRak() {
     rakSelect.appendChild(opt);
   });
 }
-loadRak().catch(err => alert("Gagal memuat rak: " + err.message));
+loadRak().catch(err => showToast("Gagal memuat rak: " + err.message, "error"));
 
 async function getRak() {
   const r = String(rakSelect.value || rakInput.value).trim().toUpperCase();
@@ -104,66 +131,99 @@ async function getRak() {
   return r;
 }
 
-async function lookup(b) {
+async function lookupByField(field, value, mode) {
   descEl.value = "Mencari...";
-  const qProduct = query(collection(db, "datasumber"), where("BARCODE", "==", b));
+  selectedProduct = null;
+  const qProduct = query(collection(db, "datasumber"), where(field, "==", value));
   const snap = await getDocs(qProduct);
+
   if (snap.empty) {
     descEl.value = "❌ Tidak ditemukan";
     descEl.dataset.rh = "";
     newProductBox.classList.remove("d-none");
     newProductName.value = "";
     newProductRh.value = "";
-    newProductMsg.textContent = "Barcode: " + b;
-    newProductName.focus();
+    if (mode === "scan") {
+      pendingLookup = { mode: "scan", barcode: value, plu: "" };
+      newProductMsg.textContent = "Barcode belum ada di master. Isi PLU produk lalu nama dan RH.";
+      newProductPlu.value = "";
+      newProductBarcode.value = value;
+      newProductPlu.focus();
+    } else {
+      pendingLookup = { mode: "plu", barcode: "", plu: value };
+      newProductMsg.textContent = "PLU belum ada di master. Isi barcode bila ada, lalu nama dan RH.";
+      newProductPlu.value = value;
+      newProductBarcode.value = "";
+      newProductName.focus();
+    }
     return false;
   }
+
   const data = snap.docs[0].data();
-  descEl.value = data.DESKRIPSI || "-";
-  descEl.dataset.rh = data.RH ?? 30;
+  selectedProduct = {
+    BARCODE: String(data.BARCODE || "").trim(),
+    PLU: String(data.PLU || "").trim(),
+    DESKRIPSI: data.DESKRIPSI || "-",
+    RH: data.RH ?? 30
+  };
+  // Apa pun sumber inputnya, textbox selalu menampilkan PLU setelah produk ditemukan.
+  barcodeEl.value = selectedProduct.PLU || value;
+  descEl.value = selectedProduct.DESKRIPSI;
+  descEl.dataset.rh = selectedProduct.RH;
   newProductBox.classList.add("d-none");
   newProductMsg.textContent = "";
   return true;
 }
 
 barcodeEl.addEventListener("change", async () => {
-  const b = normalizeBarcode(barcodeEl.value);
-  barcodeEl.value = b;
-  await lookup(b);
-  expiredEl.focus();
+  // Ketik manual = PLU, tidak ada pemotongan karakter.
+  const plu = normalizeCode(barcodeEl.value);
+  barcodeEl.value = plu;
+  if (!plu) return;
+  await lookupByField("PLU", plu, "plu");
+  if (selectedProduct) expiredEl.focus();
 });
 
 btnCreateProduct.onclick = async () => {
-  const barcode = barcodeEl.value.trim();
+  const plu = normalizeCode(newProductPlu.value);
+  const sourceBarcode = normalizeCode(newProductBarcode.value);
   const name = newProductName.value.trim().toUpperCase();
   const rh = Number(newProductRh.value);
-  if (!barcode || !name || !Number.isFinite(rh) || rh < 0) {
-    newProductMsg.textContent = "Nama produk dan RH wajib diisi dengan benar.";
+  if (!plu || !name || !Number.isFinite(rh) || rh < 0) {
+    newProductMsg.textContent = "PLU, nama produk dan RH wajib diisi dengan benar.";
     newProductMsg.className = "small mt-2 text-danger";
     return;
   }
   btnCreateProduct.disabled = true;
   btnCreateProduct.textContent = "Menyimpan...";
   try {
-    const existing = query(collection(db, "datasumber"), where("BARCODE", "==", barcode));
-    const existingSnap = await getDocs(existing);
-    if (!existingSnap.empty) throw new Error("Barcode sudah tersedia di master");
-    const productId = safeId(barcode);
-    await setDoc(doc(db, "datasumber", productId), {
-      BARCODE: barcode,
+    const pluSnap = await getDocs(query(collection(db, "datasumber"), where("PLU", "==", plu)));
+    if (!pluSnap.empty) throw new Error("PLU sudah tersedia di master");
+    if (sourceBarcode) {
+      const barcodeSnap = await getDocs(query(collection(db, "datasumber"), where("BARCODE", "==", sourceBarcode)));
+      if (!barcodeSnap.empty) throw new Error("Barcode sudah tersedia di master");
+    }
+
+    const productId = safeId(plu);
+    const data = {
+      PLU: plu,
+      BARCODE: sourceBarcode,
       DESKRIPSI: name,
       RH: rh,
       active: true,
       createdAt: new Date(),
       createdBy: currentUser.userid,
       createdByStore: currentUser.storeid
-    });
+    };
+    await setDoc(doc(db, "datasumber", productId), data);
+    selectedProduct = data;
+    barcodeEl.value = plu;
     descEl.value = name;
     descEl.dataset.rh = rh;
     newProductBox.classList.add("d-none");
     newProductMsg.textContent = "";
     expiredEl.focus();
-    alert("Produk baru berhasil ditambahkan ke master");
+    showToast("Produk baru berhasil ditambahkan ke master");
   } catch (err) {
     newProductMsg.textContent = err.message || "Gagal menambah produk";
     newProductMsg.className = "small mt-2 text-danger";
@@ -181,9 +241,9 @@ btnScan.onclick = async () => {
   try {
     await reader.decodeFromConstraints({ video: { facingMode: { ideal: "environment" } } }, video, res => {
       if (!res) return;
-      const code = normalizeBarcode(res.text);
-      barcodeEl.value = code;
-      lookup(code);
+      const rawBarcode = normalizeCode(res.text);
+      barcodeEl.value = rawBarcode;
+      lookupByField("BARCODE", rawBarcode, "scan");
       reader.reset();
       scannerBox.classList.add("d-none");
       expiredEl.focus();
@@ -191,12 +251,12 @@ btnScan.onclick = async () => {
   } catch (e) {
     const dev = await reader.listVideoInputDevices();
     const cam = dev.find(d => d.label.toLowerCase().includes("back")) || dev[dev.length - 1];
-    if (!cam) return alert("Kamera tidak ditemukan");
+    if (!cam) return showToast("Kamera tidak ditemukan", "error");
     reader.decodeFromVideoDevice(cam.deviceId, video, res => {
       if (!res) return;
-      const code = normalizeBarcode(res.text);
-      barcodeEl.value = code;
-      lookup(code);
+      const rawBarcode = normalizeCode(res.text);
+      barcodeEl.value = rawBarcode;
+      lookupByField("BARCODE", rawBarcode, "scan");
       reader.reset();
       scannerBox.classList.add("d-none");
       expiredEl.focus();
@@ -252,7 +312,9 @@ btnSave.onclick = async () => {
       });
     } else {
       await setDoc(ref, {
-        barcode,
+        barcode, // kompatibilitas tampilan lama: tetap berisi PLU
+        plu: barcode,
+        sourceBarcode: selectedProduct?.BARCODE || "",
         deskripsi: descEl.value,
         rak,
         expiredDate: exp,
@@ -272,10 +334,10 @@ btnSave.onclick = async () => {
     expiredEl.value = "";
     qtyEl.value = "";
     barcodeEl.focus();
-    alert("Data berhasil disimpan");
+    showToast("Data berhasil disimpan");
   } catch (err) {
     console.error(err);
-    alert(err.message || "Gagal menyimpan data");
+    showToast(err.message || "Gagal menyimpan data", "error");
   } finally {
     btnSave.disabled = false;
   }
