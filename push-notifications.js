@@ -1,6 +1,6 @@
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getMessaging, getToken, isSupported } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
-import { getFirestore, doc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, doc, setDoc, arrayUnion, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { FCM_VAPID_PUBLIC_KEY } from "./push-config.js";
 
 const firebaseConfig = {
@@ -30,13 +30,15 @@ async function saveToken(token) {
 
   const cacheKey = `fcm_token_${uid}`;
 
-  // Selalu sinkronkan ke Firestore. Jangan hanya mengandalkan cache lokal,
-  // karena token bisa tersimpan di HP sementara field fcmToken di Firestore belum ada.
-  await updateDoc(doc(db, "users", uid), {
+  // Selalu sinkronkan token ke Firestore. Jangan skip hanya karena token
+  // pernah tersimpan di localStorage; cache lokal bisa tetap ada walau
+  // write Firestore sebelumnya gagal.
+  await setDoc(doc(db, "users", uid), {
     fcmToken: token,
     fcmTokens: arrayUnion(token),
-    fcmUpdatedAt: new Date()
-  });
+    fcmUpdatedAt: serverTimestamp()
+  }, { merge: true });
+
   localStorage.setItem(cacheKey, token);
 }
 
