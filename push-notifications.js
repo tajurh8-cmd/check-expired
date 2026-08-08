@@ -29,8 +29,9 @@ async function saveToken(token) {
   if (!uid) throw new Error("NIK user tidak ditemukan pada sesi login");
 
   const cacheKey = `fcm_token_${uid}`;
-  if (localStorage.getItem(cacheKey) === token) return;
 
+  // Selalu sinkronkan ke Firestore. Jangan hanya mengandalkan cache lokal,
+  // karena token bisa tersimpan di HP sementara field fcmToken di Firestore belum ada.
   await updateDoc(doc(db, "users", uid), {
     fcmToken: token,
     fcmTokens: arrayUnion(token),

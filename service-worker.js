@@ -1,4 +1,4 @@
-const CACHE_NAME = "expicheck-fcm-github-actions-v1";
+const CACHE_NAME = "expicheck-fcm-github-actions-v2";
 const APP_SHELL = [
   "./", "./login.html", "./index.html", "./input.html", "./jadwal.html", "./admin.html",
   "./login.js", "./dashboard.js", "./app.js", "./jadwal.js", "./admin.js",
