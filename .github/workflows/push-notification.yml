@@ -24,4 +24,4 @@ jobs:
       - name: Send ExpiCheck reminders
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          run: node push-reminder.js
+        run: node push-reminder.js
