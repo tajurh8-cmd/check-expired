@@ -11,8 +11,31 @@ const $=id=>document.getElementById(id);
 const esc=v=>String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
 let users=[],stores=[],products=[],resetRequests=[],editingStoreId=null,userModal,productModal;
 
-async function loadStores(){try{if(currentRole==="SUPERADMIN"){const snap=await getDocs(query(collection(db,"stores"),limit(200)));stores=snap.docs.map(d=>({id:d.id,...d.data()}));}else{const one=await getDoc(doc(db,"stores",currentUser.storeid));stores=one.exists()?[{id:one.id,...one.data()}]:[];}stores.sort((a,b)=>String(a.storeid||a.id).localeCompare(String(b.storeid||b.id)));renderStores();fillStoreOptions();const el=$("summaryStores");if(el)el.textContent=stores.length;}catch(e){$("storeList").innerHTML=`<div class="alert alert-danger">${esc(e.message)}</div>`;}}
-async function loadUsers(){try{const q=currentRole==="SUPERADMIN"?query(collection(db,"users"),limit(300)):query(collection(db,"users"),where("storeid","==",currentUser.storeid),limit(200));const snap=await getDocs(q);users=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>String(a.username||"").localeCompare(String(b.username||"")));$("pendingBadge").innerText=users.filter(x=>x.active!==true).length;const su=$("summaryUsers"),sa=$("summaryActive"),sp=$("summaryPending");if(su)su.textContent=users.length;if(sa)sa.textContent=users.filter(x=>x.active===true).length;if(sp)sp.textContent=users.filter(x=>x.active!==true).length;renderUsers();}catch(e){$("userList").innerHTML=`<div class="alert alert-danger">${esc(e.message)}</div>`;}}
+async function loadStores(){
+  try{
+    // ADMIN dan SUPERADMIN harus dapat melihat seluruh toko untuk kelola toko
+    // dan untuk memindahkan/menyetujui user lintas toko.
+    const snap=await getDocs(query(collection(db,"stores"),limit(300)));
+    stores=snap.docs.map(d=>({id:d.id,...d.data()}));
+    stores.sort((a,b)=>String(a.storeid||a.id).localeCompare(String(b.storeid||b.id)));
+    renderStores();
+    fillStoreOptions();
+    const el=$("summaryStores");if(el)el.textContent=stores.length;
+  }catch(e){$("storeList").innerHTML=`<div class="alert alert-danger">${esc(e.message)}</div>`;}
+}
+async function loadUsers(){
+  try{
+    // Approval user bersifat lintas toko untuk ADMIN/SUPERADMIN.
+    const snap=await getDocs(query(collection(db,"users"),limit(500)));
+    users=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>String(a.username||"").localeCompare(String(b.username||"")));
+    $("pendingBadge").innerText=users.filter(x=>x.active!==true).length;
+    const su=$("summaryUsers"),sa=$("summaryActive"),sp=$("summaryPending");
+    if(su)su.textContent=users.length;
+    if(sa)sa.textContent=users.filter(x=>x.active===true).length;
+    if(sp)sp.textContent=users.filter(x=>x.active!==true).length;
+    renderUsers();
+  }catch(e){$("userList").innerHTML=`<div class="alert alert-danger">${esc(e.message)}</div>`;}
+}
 window.renderUsers=()=>{
   const q=$("userSearch").value.toLowerCase().trim(); const status=$("userStatus").value;
   const rows=users.filter(x=>{
@@ -106,7 +129,7 @@ window.toggleToken=()=>{const input=$("fonnteToken"),icon=$("tokenEye");input.ty
 
 
 async function loadProducts(){try{const term=String($("productSearch")?.value||"").trim();let snap;if(/^\d{4,}$/.test(term))snap=await getDocs(query(collection(db,"datasumber"),where("BARCODE","==",term),limit(5)));else snap=await getDocs(query(collection(db,"datasumber"),limit(100)));products=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>String(a.DESKRIPSI||"").localeCompare(String(b.DESKRIPSI||"")));renderProducts();}catch(e){$("productList").innerHTML=`<div class="alert alert-danger">${esc(e.message)}</div>`;}}
-async function loadResetRequests(){try{const q=currentRole==="SUPERADMIN"?query(collection(db,"passwordResetRequests"),limit(100)):query(collection(db,"passwordResetRequests"),where("storeid","==",currentUser.storeid),limit(100));const snap=await getDocs(q);resetRequests=snap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.status==="PENDING");$("resetBadge").textContent=resetRequests.length;renderResetRequests();}catch(e){$("resetList").innerHTML=`<div class="alert alert-danger">${esc(e.message)}</div>`;}}
+async function loadResetRequests(){try{const snap=await getDocs(query(collection(db,"passwordResetRequests"),limit(200)));resetRequests=snap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.status==="PENDING");$("resetBadge").textContent=resetRequests.length;renderResetRequests();}catch(e){$("resetList").innerHTML=`<div class="alert alert-danger">${esc(e.message)}</div>`;}}
 
 
 window.renderProducts=()=>{const q=String($("productSearch")?.value||"").toLowerCase();const rows=products.filter(x=>`${x.BARCODE||""} ${x.DESKRIPSI||""}`.toLowerCase().includes(q)).slice(0,100);$("productList").innerHTML=rows.length?rows.map(x=>`<div class="card shadow-sm mb-2"><div class="card-body py-2 d-flex justify-content-between align-items-center"><div><b>${esc(x.DESKRIPSI||'-')}</b><div class="label">${esc(x.BARCODE||'-')} • RH: ${Number(x.RH)||0} hari</div></div><button class="btn btn-sm btn-outline-primary" onclick="openProduct('${esc(x.id)}')"><i class="bi bi-pencil"></i> Edit</button></div></div>`).join(""):`<div class="alert alert-light text-center">Produk tidak ditemukan.</div>`;};
@@ -115,7 +138,6 @@ window.saveProductRh=async()=>{try{const id=$("editProductId").value;const rh=Nu
 window.renderResetRequests=()=>{$("resetList").innerHTML=resetRequests.length?resetRequests.map(x=>`<div class="card shadow-sm mb-2"><div class="card-body py-2"><b>${esc(x.username||'-')}</b><div class="label">NIK ${esc(x.nik||x.id)} • ${esc(x.storeid||'-')}</div><button class="btn btn-sm btn-primary mt-2" onclick="processReset('${esc(x.id)}')">Buat password sementara</button></div></div>`).join(""):`<div class="alert alert-light text-center">Tidak ada permintaan reset.</div>`;};
 window.processReset=async id=>{
   const r=resetRequests.find(x=>x.id===id);if(!r)return;
-  if(currentRole!=="SUPERADMIN"&&String(r.storeid)!==String(currentUser.storeid)){ExpiUI.toast("Hanya admin toko terkait yang boleh memproses","error",3500);return;}
   const pw=await ExpiUI.prompt("Masukkan password sementara minimal 6 karakter.",{title:"Reset password",okText:"Simpan",type:"password",placeholder:"Minimal 6 karakter"});
   if(pw===null)return;
   if(String(pw).length<6){ExpiUI.toast("Password minimal 6 karakter","warning",3000);return;}
