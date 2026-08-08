@@ -1,4 +1,4 @@
-const CACHE_NAME = "expicheck-final-rule-v3-editqty-scanner-v3-jadwal-adminfix-v2";
+const CACHE_NAME = "expicheck-notify-jadwal-rh-v1";
 const APP_SHELL = [
   "./",
   "./login.html",
@@ -51,3 +51,5 @@ self.addEventListener("fetch", event => {
     })
   );
 });
+
+self.addEventListener("notificationclick", event => { event.notification.close(); const url=(event.notification.data&&event.notification.data.url)||"./index.html"; event.waitUntil(clients.matchAll({type:"window",includeUncontrolled:true}).then(ws=>{for(const w of ws){if("focus" in w){w.navigate(url);return w.focus();}}return clients.openWindow?clients.openWindow(url):null;}));});
