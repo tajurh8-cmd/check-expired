@@ -54,6 +54,7 @@ async function registerToken() {
   });
   if (!token) throw new Error("FCM token tidak berhasil dibuat");
   await saveToken(token);
+  console.log("FCM token tersimpan ke Firestore untuk user aktif");
   return token;
 }
 
@@ -61,8 +62,8 @@ export async function enablePushNotifications() {
   if (!("Notification" in window)) throw new Error("Perangkat/browser ini tidak mendukung notifikasi");
   const permission = await Notification.requestPermission();
   if (permission !== "granted") throw new Error("Izin notifikasi belum diberikan");
-  await registerToken();
-  return true;
+  const token = await registerToken();
+  return { ok:true, token };
 }
 
 export async function syncPushTokenIfAllowed() {

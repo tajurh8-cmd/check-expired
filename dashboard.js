@@ -1,8 +1,16 @@
 import { enablePushNotifications, syncPushTokenIfAllowed } from "./push-notifications.js";
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore, collection, getDocs, getDoc, doc, deleteDoc, query, where, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-initializeApp({apiKey:"AIzaSyD_I1HSrulXlPCj9_U_FhSfsYQhz-DxbMk",authDomain:"dbplu-62d92.firebaseapp.com",projectId:"dbplu-62d92"});
-const db=getFirestore();
+const firebaseConfig={
+  apiKey:"AIzaSyD_I1HSrulXlPCj9_U_FhSfsYQhz-DxbMk",
+  authDomain:"dbplu-62d92.firebaseapp.com",
+  projectId:"dbplu-62d92",
+  storageBucket:"dbplu-62d92.firebasestorage.app",
+  messagingSenderId:"623211397382",
+  appId:"1:623211397382:web:db9a7bd4abcc7f44261e87"
+};
+const firebaseApp=getApps().length?getApp():initializeApp(firebaseConfig);
+const db=getFirestore(firebaseApp);
 const btnNotification=document.getElementById("btnNotification");
 const todayNotice=document.getElementById("todayNotice");
 const currentUser=JSON.parse(localStorage.getItem("user")||"null");
@@ -78,14 +86,28 @@ async function runDailyNotifications(items){
   localStorage.setItem(dailyKey,"1");
 }
 async function enableNotifications(){
-  try {
-    await enablePushNotifications();
-    ExpiUI.toast("Push notification ExpiCheck aktif","success");
+  if(!btnNotification)return;
+  btnNotification.disabled=true;
+  btnNotification.style.opacity=".55";
+  try{
+    ExpiUI.toast("Mengaktifkan notifikasi...","info",1800);
+    const result=await enablePushNotifications();
+    console.log("FCM aktif:", result);
+    ExpiUI.toast("Notifikasi aktif dan token tersimpan","success",3000);
     sessionStorage.removeItem(`dashboard_${currentUser.storeid}`);
     loadDashboard(true);
-  } catch (err) {
-    ExpiUI.toast(err.message || "Gagal mengaktifkan notifikasi","warning",3500);
+  }catch(err){
+    console.error("Aktivasi FCM gagal:",err);
+    ExpiUI.toast(err?.message||"Gagal mengaktifkan notifikasi","warning",5000);
+  }finally{
+    btnNotification.disabled=false;
+    btnNotification.style.opacity="";
   }
 }
-btnNotification?.addEventListener("click",enableNotifications);
-syncPushTokenIfAllowed();
+if(btnNotification){
+  btnNotification.addEventListener("click",enableNotifications);
+  console.log("Tombol notifikasi siap");
+}else{
+  console.error("btnNotification tidak ditemukan");
+}
+syncPushTokenIfAllowed().then(ok=>console.log("FCM auto-sync:",ok));
