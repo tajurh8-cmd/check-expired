@@ -1,4 +1,4 @@
-const CACHE_NAME = "expicheck-final-rule-v3-editqty";
+const CACHE_NAME = "expicheck-final-rule-v3-editqty-scanner-v2";
 const APP_SHELL = [
   "./",
   "./login.html",

@@ -22,6 +22,7 @@ const btnScan = document.getElementById("btnScan");
 const scannerBox = document.getElementById("scannerBox");
 const video = document.getElementById("video");
 const btnCloseScan = document.getElementById("btnCloseScan");
+const btnTorch = document.getElementById("btnTorch");
 const newProductBox = document.getElementById("newProductBox");
 const newProductName = document.getElementById("newProductName");
 const newProductRh = document.getElementById("newProductRh");
@@ -106,6 +107,14 @@ async function loadRak() {
   });
 }
 loadRak().catch(err => showToast("Gagal memuat rak: " + err.message, "error"));
+
+// Saat halaman Input dibuka, kursor langsung siap di field PLU/Barcode.
+window.addEventListener("DOMContentLoaded", () => {
+  setTimeout(() => {
+    barcodeEl.focus({ preventScroll: true });
+    barcodeEl.select?.();
+  }, 250);
+});
 
 async function getRak() {
   const r = String(rakSelect.value || rakInput.value).trim().toUpperCase();
@@ -279,40 +288,106 @@ btnCreateProduct.onclick = async () => {
 };
 
 let reader = null;
+let scanLocked = false;
+let torchOn = false;
+
+function createReader() {
+  const hints = new Map();
+  hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+    ZXing.BarcodeFormat.EAN_13,
+    ZXing.BarcodeFormat.EAN_8,
+    ZXing.BarcodeFormat.UPC_A,
+    ZXing.BarcodeFormat.UPC_E,
+    ZXing.BarcodeFormat.CODE_128,
+    ZXing.BarcodeFormat.CODE_39
+  ]);
+  hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+  return new ZXing.BrowserMultiFormatReader(hints, 120);
+}
+
+function stopScanner() {
+  scannerBox.classList.add("d-none");
+  scanLocked = false;
+  torchOn = false;
+  btnTorch?.classList.add("d-none");
+  if (reader) reader.reset();
+}
+
+async function setupTorchButton() {
+  await new Promise(r => setTimeout(r, 350));
+  const stream = video.srcObject;
+  const track = stream?.getVideoTracks?.()[0];
+  if (!track) return;
+  const caps = track.getCapabilities?.() || {};
+  if (caps.torch) btnTorch?.classList.remove("d-none");
+}
+
+async function handleScanResult(res) {
+  if (!res || scanLocked) return;
+  const rawCode = normalizeCode(res.text);
+  if (!rawCode) return;
+  scanLocked = true;
+  barcodeEl.value = rawCode;
+  try {
+    const found = await lookupByCode(rawCode);
+    stopScanner();
+    if (found) expiredEl.focus();
+  } catch (err) {
+    scanLocked = false;
+    showToast("Barcode terbaca, tetapi pencarian gagal: " + (err.message || err), "error");
+  }
+}
+
 btnScan.onclick = async () => {
   scannerBox.classList.remove("d-none");
-  if (!reader) reader = new ZXing.BrowserMultiFormatReader();
+  scanLocked = false;
+  if (reader) reader.reset();
+  reader = createReader();
+
+  const videoConstraints = {
+    facingMode: { ideal: "environment" },
+    width: { ideal: 1920 },
+    height: { ideal: 1080 },
+    aspectRatio: { ideal: 1.7777778 },
+    advanced: [{ focusMode: "continuous" }]
+  };
 
   try {
-    await reader.decodeFromConstraints({ video: { facingMode: { ideal: "environment" } } }, video, res => {
-      if (!res) return;
-      const rawCode = normalizeCode(res.text);
-      barcodeEl.value = rawCode;
-      lookupByCode(rawCode);
-      reader.reset();
-      scannerBox.classList.add("d-none");
-      expiredEl.focus();
+    await reader.decodeFromConstraints({ audio: false, video: videoConstraints }, video, res => {
+      handleScanResult(res);
     });
+    setupTorchButton();
   } catch (e) {
-    const dev = await reader.listVideoInputDevices();
-    const cam = dev.find(d => d.label.toLowerCase().includes("back")) || dev[dev.length - 1];
-    if (!cam) return showToast("Kamera tidak ditemukan", "error");
-    reader.decodeFromVideoDevice(cam.deviceId, video, res => {
-      if (!res) return;
-      const rawCode = normalizeCode(res.text);
-      barcodeEl.value = rawCode;
-      lookupByCode(rawCode);
-      reader.reset();
-      scannerBox.classList.add("d-none");
-      expiredEl.focus();
-    });
+    try {
+      const dev = await reader.listVideoInputDevices();
+      const cam = dev.find(d => /back|rear|environment/i.test(d.label)) || dev[dev.length - 1];
+      if (!cam) throw new Error("Kamera belakang tidak ditemukan");
+      await reader.decodeFromVideoDevice(cam.deviceId, video, res => {
+        handleScanResult(res);
+      });
+      setupTorchButton();
+    } catch (err) {
+      stopScanner();
+      showToast("Scanner kamera gagal: " + (err.message || err), "error");
+    }
   }
 };
 
-btnCloseScan.onclick = () => {
-  scannerBox.classList.add("d-none");
-  if (reader) reader.reset();
-};
+btnTorch?.addEventListener("click", async () => {
+  const track = video.srcObject?.getVideoTracks?.()[0];
+  if (!track) return;
+  try {
+    torchOn = !torchOn;
+    await track.applyConstraints({ advanced: [{ torch: torchOn }] });
+    btnTorch.classList.toggle("btn-warning", torchOn);
+    btnTorch.classList.toggle("btn-light", !torchOn);
+  } catch (err) {
+    torchOn = false;
+    showToast("Flash tidak didukung perangkat ini", "warning");
+  }
+});
+
+btnCloseScan.onclick = stopScanner;
 
 btnSave.onclick = async () => {
   btnSave.disabled = true;
