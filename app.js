@@ -107,33 +107,42 @@ async function loadRak() {
     rakSelect.appendChild(opt);
   });
 }
-const DAY_FIELDS = ["minggu","senin","selasa","rabu","kamis","jumat","sabtu"];
-const DAY_LABELS = ["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
+function scheduleUserId() {
+  return String(currentUser.userid || currentUser.nik || currentUser.NIK || currentUser.username || "").trim();
+}
+function scheduleSafeId(v) { return String(v).replace(/[^a-zA-Z0-9_-]/g, "_"); }
+function todayYMD() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
 
 async function applyTodaySchedule() {
   try {
-    const snap = await getDoc(doc(db, "JadwalRak", currentUser.storeid));
+    const uid = scheduleUserId();
+    if (!uid) return;
+    const today = todayYMD();
+    const ym = today.slice(0,7);
+    const id = `${scheduleSafeId(currentUser.storeid)}_${scheduleSafeId(uid)}_${ym}`;
+    const snap = await getDoc(doc(db, "JadwalRakUser", id));
     if (!snap.exists()) return;
-    const dayIndex = new Date().getDay();
-    const field = DAY_FIELDS[dayIndex];
-    const scheduledRak = String(snap.data()?.[field] || "").trim().toUpperCase();
-    if (!scheduledRak) return;
-
-    // Jika rak jadwal belum ada di pilihan (mis. master rak berubah), tetap tampilkan tanpa mengunci user.
+    const scheduledRak = String(snap.data()?.days?.[today] || "").trim().toUpperCase();
+    if (!scheduledRak) {
+      if (scheduleInfo) {
+        scheduleInfo.textContent = `Hari ini tidak ada rak terjadwal / OFF • rak tetap bisa dipilih manual`;
+        scheduleInfo.classList.remove("d-none");
+      }
+      return;
+    }
     if (![...rakSelect.options].some(o => o.value === scheduledRak)) {
       const opt = document.createElement("option");
-      opt.value = scheduledRak;
-      opt.textContent = scheduledRak;
-      rakSelect.appendChild(opt);
+      opt.value = scheduledRak; opt.textContent = scheduledRak; rakSelect.appendChild(opt);
     }
     rakSelect.value = scheduledRak;
     if (scheduleInfo) {
-      scheduleInfo.textContent = `Jadwal ${DAY_LABELS[dayIndex]}: ${scheduledRak} • tetap bisa diubah`;
+      scheduleInfo.textContent = `Jadwal hari ini: ${scheduledRak} • tetap bisa diubah`;
       scheduleInfo.classList.remove("d-none");
     }
-  } catch (err) {
-    console.warn("Jadwal rak tidak dapat dimuat", err);
-  }
+  } catch (err) { console.warn("Jadwal rak user tidak dapat dimuat", err); }
 }
 
 loadRak()
