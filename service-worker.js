@@ -1,4 +1,4 @@
-const CACHE_NAME = "expicheck-ui-v10";
+const CACHE_NAME = "expicheck-final-rule-v3-editqty";
 const APP_SHELL = [
   "./",
   "./login.html",
@@ -11,6 +11,7 @@ const APP_SHELL = [
   "./admin.js",
   "./manifest.json",
   "./style.css",
+  "./ui-dialog.js",
   "./icon-192.png",
   "./icon-512.png"
 ];

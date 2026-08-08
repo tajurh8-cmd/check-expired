@@ -13,10 +13,21 @@ async function loadDashboard(force=false){
  if(loading)return;const cacheKey=`dashboard_${currentUser.storeid}`;const cached=sessionStorage.getItem(cacheKey);
  if(!force&&cached){try{const p=JSON.parse(cached);if(Date.now()-p.savedAt<60000){render(p.items.map(x=>({...x,exp:new Date(x.exp),tarik:new Date(x.tarik)})));return;}}catch(_){}}
  loading=true;listEl.innerHTML='<div class="alert alert-light text-center">Memuat data...</div>';
- try{const qItems=query(collection(db,"edItems"),where("storeid","==",currentUser.storeid),limit(500));const snap=await getDocs(qItems);const items=[];snap.forEach(d=>{const x=d.data();if(!x.expiredDate||!x.tanggalTarik)return;const exp=x.expiredDate.toDate(),tarik=x.tanggalTarik.toDate();items.push({id:d.id,...x,exp,tarik,s:sisaHari(tarik)});});sessionStorage.setItem(cacheKey,JSON.stringify({savedAt:Date.now(),items:items.map(x=>({...x,exp:x.exp.toISOString(),tarik:x.tarik.toISOString()}))}));render(items);}catch(err){console.error(err);listEl.innerHTML=`<div class="alert alert-danger">Gagal membaca data: ${esc(err.message)}</div>`;}finally{loading=false;}
+ try{const qItems=query(collection(db,"edItems"),where("storeid","==",currentUser.storeid),limit(500));const snap=await getDocs(qItems);const items=[];snap.forEach(d=>{const x=d.data();if(!x.expiredDate||!x.tanggalTarik)return;const exp=x.expiredDate.toDate(),tarik=x.tanggalTarik.toDate(); if (tarik.getTime() < new Date().setHours(0,0,0,0)) return; items.push({id:d.id,...x,exp,tarik,s:sisaHari(tarik)});});sessionStorage.setItem(cacheKey,JSON.stringify({savedAt:Date.now(),items:items.map(x=>({...x,exp:x.exp.toISOString(),tarik:x.tarik.toISOString()}))}));render(items);}catch(err){console.error(err);listEl.innerHTML=`<div class="alert alert-danger">Gagal membaca data: ${esc(err.message)}</div>`;}finally{loading=false;}
 }
 function render(items){let tq=0,b6=0,b612=0,t12=0,a2=0;items.forEach(x=>{const q=Number(x.qty)||0;tq+=q;if(x.s<180)b6+=q;else if(x.s<365)b612+=q;else if(x.s<730)t12+=q;else a2+=q;});totalQtyEl.innerText=tq;totalItemEl.innerText=items.length;bawah6El.innerText=b6;bulan6_12El.innerText=b612;tahun1_2El.innerText=t12;atas2El.innerText=a2;items.sort((a,b)=>a.s-b.s||String(a.deskripsi||"").localeCompare(String(b.deskripsi||"")));if(!items.length){listEl.innerHTML=`<div class="alert alert-light text-center">Belum ada data untuk toko ${esc(currentUser.storeid)}.</div>`;return;}listEl.innerHTML=items.map(x=>{const w=warna(x.s);return `<div class="card item-card ${w[0]}"><div class="card-body"><div class="d-flex justify-content-between gap-2"><b>${esc(x.deskripsi||"-")}</b><div class="label text-end">User: <b>${esc(x.user||"-")}</b></div></div><div style="font-size:18px;font-weight:700">Qty: ${Number(x.qty)||0}</div><div class="label mt-1">${esc(x.barcode||"-")} • Rak <b>${esc(x.rak||"-")}</b></div><div class="label mt-1">Expired: ${fmt(x.exp)}</div><div class="label">Tanggal Tarik: ${fmt(x.tarik)}</div><div class="label">RH: <b>${Number(x.RH)||30}</b> hari</div><div class="d-flex justify-content-between mt-2"><div class="umur">${x.s<0?"LEWAT "+Math.abs(x.s)+" hari":"Sisa "+x.s+" hari"}</div><div class="d-flex gap-2"><span class="pill ${w[2]}">${w[1]}</span><button class="btn btn-sm btn-outline-danger" onclick="hapus('${x.id}')">🗑</button></div></div></div></div>`;}).join("");}
 window.refreshDashboard=()=>{sessionStorage.removeItem(`dashboard_${currentUser.storeid}`);loadDashboard(true);};
-window.hapus=async id=>{if(!confirm("Hapus item ini?"))return;await deleteDoc(doc(db,"edItems",id));window.refreshDashboard();};
+window.hapus=async id=>{
+  const ok=await ExpiUI.confirm("Item yang sudah dihapus tidak dapat dikembalikan.",{title:"Hapus item?",okText:"Hapus",cancelText:"Batal",danger:true});
+  if(!ok)return;
+  try{
+    await deleteDoc(doc(db,"edItems",id));
+    ExpiUI.toast("Item berhasil dihapus","success");
+    window.refreshDashboard();
+  }catch(e){
+    console.error(e);
+    ExpiUI.toast("Gagal menghapus item: "+e.message,"error",3500);
+  }
+};
 function esc(v){return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));}
 loadDashboard();

@@ -60,7 +60,7 @@ function normalizeCode(v) {
 }
 
 // datasumber memiliki dua key berbeda: BARCODE dan PLU.
-// Input manual dicari ke field PLU, sedangkan hasil scanner dicari ke field BARCODE.
+// Aturan identifikasi berdasarkan panjang kode: <= 6 karakter = PLU, > 6 karakter = BARCODE.
 let selectedProduct = null;
 let pendingLookup = { mode: "plu", barcode: "", plu: "" };
 
@@ -175,22 +175,67 @@ async function lookupByField(field, value, mode) {
   return true;
 }
 
+async function lookupByCode(rawValue) {
+  const code = normalizeCode(rawValue);
+  barcodeEl.value = code;
+  if (!code) return false;
+
+  // ATURAN FINAL:
+  // <= 6 karakter = PLU, dicari apa adanya.
+  // > 6 karakter = barcode fisik, buang 1 karakter terakhir SEBELUM query.
+  // Dengan demikian hanya ada 1 query Firestore per pencarian.
+  if (code.length <= 6) {
+    return await lookupByField("PLU", code, "plu");
+  }
+
+  const barcodeMaster = code.slice(0, -1);
+  descEl.value = "Mencari...";
+  selectedProduct = null;
+
+  const snap = await getDocs(query(collection(db, "datasumber"), where("BARCODE", "==", barcodeMaster)));
+  if (!snap.empty) {
+    const data = snap.docs[0].data();
+    selectedProduct = {
+      BARCODE: String(data.BARCODE || "").trim(),
+      PLU: String(data.PLU || "").trim(),
+      DESKRIPSI: data.DESKRIPSI || "-",
+      RH: data.RH ?? 30
+    };
+    // Setelah ditemukan, textbox utama selalu menampilkan PLU.
+    barcodeEl.value = selectedProduct.PLU || code;
+    descEl.value = selectedProduct.DESKRIPSI;
+    descEl.dataset.rh = selectedProduct.RH;
+    newProductBox.classList.add("d-none");
+    newProductMsg.textContent = "";
+    return true;
+  }
+
+  descEl.value = "❌ Tidak ditemukan";
+  descEl.dataset.rh = "";
+  newProductBox.classList.remove("d-none");
+  newProductName.value = "";
+  newProductRh.value = "";
+  pendingLookup = { mode: "barcode", barcode: barcodeMaster, plu: "" };
+  newProductMsg.textContent = "Produk belum ada. PLU dan barcode fisik wajib diisi.";
+  newProductPlu.value = "";
+  // Form menampilkan barcode FISIK lengkap. Normalisasi dilakukan saat simpan.
+  newProductBarcode.value = code;
+  newProductPlu.focus();
+  return false;
+}
+
 barcodeEl.addEventListener("change", async () => {
-  // Ketik manual = PLU, tidak ada pemotongan karakter.
-  const plu = normalizeCode(barcodeEl.value);
-  barcodeEl.value = plu;
-  if (!plu) return;
-  await lookupByField("PLU", plu, "plu");
+  await lookupByCode(barcodeEl.value);
   if (selectedProduct) expiredEl.focus();
 });
 
 btnCreateProduct.onclick = async () => {
   const plu = normalizeCode(newProductPlu.value);
-  const sourceBarcode = normalizeCode(newProductBarcode.value);
+  const physicalBarcode = normalizeCode(newProductBarcode.value);
   const name = newProductName.value.trim().toUpperCase();
   const rh = Number(newProductRh.value);
-  if (!plu || !name || !Number.isFinite(rh) || rh < 0) {
-    newProductMsg.textContent = "PLU, nama produk dan RH wajib diisi dengan benar.";
+  if (!plu || plu.length > 6 || !physicalBarcode || physicalBarcode.length <= 6 || !name || !Number.isFinite(rh) || rh < 0) {
+    newProductMsg.textContent = "PLU (maks. 6 karakter), barcode fisik, nama produk dan RH wajib diisi.";
     newProductMsg.className = "small mt-2 text-danger";
     return;
   }
@@ -199,10 +244,10 @@ btnCreateProduct.onclick = async () => {
   try {
     const pluSnap = await getDocs(query(collection(db, "datasumber"), where("PLU", "==", plu)));
     if (!pluSnap.empty) throw new Error("PLU sudah tersedia di master");
-    if (sourceBarcode) {
-      const barcodeSnap = await getDocs(query(collection(db, "datasumber"), where("BARCODE", "==", sourceBarcode)));
-      if (!barcodeSnap.empty) throw new Error("Barcode sudah tersedia di master");
-    }
+    // Barcode yang disimpan ke master selalu versi normal: barcode fisik - 1 karakter terakhir.
+    const sourceBarcode = physicalBarcode.slice(0, -1);
+    const barcodeSnap = await getDocs(query(collection(db, "datasumber"), where("BARCODE", "==", sourceBarcode)));
+    if (!barcodeSnap.empty) throw new Error("Barcode sudah tersedia di master");
 
     const productId = safeId(plu);
     const data = {
@@ -241,9 +286,9 @@ btnScan.onclick = async () => {
   try {
     await reader.decodeFromConstraints({ video: { facingMode: { ideal: "environment" } } }, video, res => {
       if (!res) return;
-      const rawBarcode = normalizeCode(res.text);
-      barcodeEl.value = rawBarcode;
-      lookupByField("BARCODE", rawBarcode, "scan");
+      const rawCode = normalizeCode(res.text);
+      barcodeEl.value = rawCode;
+      lookupByCode(rawCode);
       reader.reset();
       scannerBox.classList.add("d-none");
       expiredEl.focus();
@@ -254,9 +299,9 @@ btnScan.onclick = async () => {
     if (!cam) return showToast("Kamera tidak ditemukan", "error");
     reader.decodeFromVideoDevice(cam.deviceId, video, res => {
       if (!res) return;
-      const rawBarcode = normalizeCode(res.text);
-      barcodeEl.value = rawBarcode;
-      lookupByField("BARCODE", rawBarcode, "scan");
+      const rawCode = normalizeCode(res.text);
+      barcodeEl.value = rawCode;
+      lookupByCode(rawCode);
       reader.reset();
       scannerBox.classList.add("d-none");
       expiredEl.focus();
@@ -287,34 +332,69 @@ btnSave.onclick = async () => {
 
     const tarik = tanggalTarik(exp, rh);
     const expKey = exp.toISOString().slice(0, 10).replace(/-/g, "");
-    const id = `${safeId(currentUser.storeid)}_${safeId(currentUser.userid)}_${safeId(barcode)}_${expKey}`;
-    const ref = doc(db, "edItems", id);
-    const snap = await getDoc(ref);
+    const plu = String(selectedProduct?.PLU || barcode).trim();
+    const sourceBarcode = String(selectedProduct?.BARCODE || "").trim();
 
-    const identity = {
-      storeid: currentUser.storeid,
-      storename: currentUser.storename,
-      userid: currentUser.userid,
-      user: currentUser.username,
-      inputByNik: currentUser.userid,
-      inputByName: currentUser.username,
-      inputByPhone: currentUser.phone || ""
-    };
+    // Cek duplikasi berdasarkan: toko + rak + PLU + BARCODE + tanggal expired.
+    // Query dibatasi ke storeid + PLU agar reads tetap kecil, lalu field lain dicocokkan di client.
+    const dupQ = query(
+      collection(db, "edItems"),
+      where("storeid", "==", currentUser.storeid),
+      where("plu", "==", plu)
+    );
+    const dupSnap = await getDocs(dupQ);
+    let duplicate = null;
+    dupSnap.forEach(d => {
+      if (duplicate) return;
+      const x = d.data();
+      const expDate = x.expiredDate?.toDate ? x.expiredDate.toDate() : new Date(x.expiredDate);
+      const sameExp = !isNaN(expDate) && expDate.toISOString().slice(0, 10).replace(/-/g, "") === expKey;
+      const sameRak = String(x.rak || "").trim().toUpperCase() === String(rak).trim().toUpperCase();
+      const sameBarcode = String(x.sourceBarcode || "").trim() === sourceBarcode;
+      const samePlu = String(x.plu || x.barcode || "").trim() === plu;
+      if (sameRak && samePlu && sameBarcode && sameExp) duplicate = { ref: d.ref, data: x };
+    });
 
-    if (snap.exists()) {
-      await updateDoc(ref, {
-        qty: increment(qty),
-        rak,
-        tanggalTarik: tarik,
-        RH: rh,
-        lastUpdate: new Date(),
-        ...identity
+    if (duplicate) {
+      const edit = await ExpiUI.confirm(
+        `Item sudah ada di rak ${rak} dengan expired yang sama. Edit QTY?`,
+        { title: "Item Sudah Ada", okText: "Edit QTY", cancelText: "Batal" }
+      );
+      if (!edit) return;
+
+      const newQtyRaw = await ExpiUI.prompt("Masukkan QTY baru", {
+        title: "Edit QTY",
+        okText: "Simpan",
+        value: String(duplicate.data.qty ?? qty),
+        type: "number"
       });
+      if (newQtyRaw === null) return;
+      const newQty = Number(newQtyRaw);
+      if (!Number.isFinite(newQty) || newQty <= 0) throw new Error("QTY harus lebih dari 0");
+
+      await updateDoc(duplicate.ref, {
+        qty: newQty,
+        lastUpdate: new Date(),
+        lastEditedByNik: currentUser.userid,
+        lastEditedByName: currentUser.username
+      });
+      showToast("QTY berhasil diperbarui");
     } else {
+      const identity = {
+        storeid: currentUser.storeid,
+        storename: currentUser.storename,
+        userid: currentUser.userid,
+        user: currentUser.username,
+        inputByNik: currentUser.userid,
+        inputByName: currentUser.username,
+        inputByPhone: currentUser.phone || ""
+      };
+      const id = `${safeId(currentUser.storeid)}_${safeId(currentUser.userid)}_${safeId(rak)}_${safeId(plu)}_${safeId(sourceBarcode)}_${expKey}`;
+      const ref = doc(db, "edItems", id);
       await setDoc(ref, {
-        barcode, // kompatibilitas tampilan lama: tetap berisi PLU
-        plu: barcode,
-        sourceBarcode: selectedProduct?.BARCODE || "",
+        barcode: plu, // kompatibilitas tampilan lama: field barcode tetap berisi PLU
+        plu,
+        sourceBarcode,
         deskripsi: descEl.value,
         rak,
         expiredDate: exp,
@@ -325,6 +405,7 @@ btnSave.onclick = async () => {
         lastUpdate: new Date(),
         ...identity
       });
+      showToast("Data berhasil disimpan");
     }
 
     barcodeEl.value = "";
@@ -334,7 +415,6 @@ btnSave.onclick = async () => {
     expiredEl.value = "";
     qtyEl.value = "";
     barcodeEl.focus();
-    showToast("Data berhasil disimpan");
   } catch (err) {
     console.error(err);
     showToast(err.message || "Gagal menyimpan data", "error");
