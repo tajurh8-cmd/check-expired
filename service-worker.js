@@ -1,13 +1,15 @@
-const CACHE_NAME = "expicheck-final-rule-v3-editqty-scanner-v2";
+const CACHE_NAME = "expicheck-final-rule-v3-editqty-scanner-v3-jadwal";
 const APP_SHELL = [
   "./",
   "./login.html",
   "./index.html",
   "./input.html",
+  "./jadwal.html",
   "./admin.html",
   "./login.js",
   "./dashboard.js",
   "./app.js",
+  "./jadwal.js",
   "./admin.js",
   "./manifest.json",
   "./style.css",

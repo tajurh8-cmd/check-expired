@@ -30,6 +30,7 @@ const newProductPlu = document.getElementById("newProductPlu");
 const newProductBarcode = document.getElementById("newProductBarcode");
 const btnCreateProduct = document.getElementById("btnCreateProduct");
 const newProductMsg = document.getElementById("newProductMsg");
+const scheduleInfo = document.getElementById("scheduleInfo");
 
 const currentUser = JSON.parse(localStorage.getItem("user") || "null");
 if (!currentUser?.storeid) {
@@ -106,7 +107,38 @@ async function loadRak() {
     rakSelect.appendChild(opt);
   });
 }
-loadRak().catch(err => showToast("Gagal memuat rak: " + err.message, "error"));
+const DAY_FIELDS = ["minggu","senin","selasa","rabu","kamis","jumat","sabtu"];
+const DAY_LABELS = ["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
+
+async function applyTodaySchedule() {
+  try {
+    const snap = await getDoc(doc(db, "JadwalRak", currentUser.storeid));
+    if (!snap.exists()) return;
+    const dayIndex = new Date().getDay();
+    const field = DAY_FIELDS[dayIndex];
+    const scheduledRak = String(snap.data()?.[field] || "").trim().toUpperCase();
+    if (!scheduledRak) return;
+
+    // Jika rak jadwal belum ada di pilihan (mis. master rak berubah), tetap tampilkan tanpa mengunci user.
+    if (![...rakSelect.options].some(o => o.value === scheduledRak)) {
+      const opt = document.createElement("option");
+      opt.value = scheduledRak;
+      opt.textContent = scheduledRak;
+      rakSelect.appendChild(opt);
+    }
+    rakSelect.value = scheduledRak;
+    if (scheduleInfo) {
+      scheduleInfo.textContent = `Jadwal ${DAY_LABELS[dayIndex]}: ${scheduledRak} • tetap bisa diubah`;
+      scheduleInfo.classList.remove("d-none");
+    }
+  } catch (err) {
+    console.warn("Jadwal rak tidak dapat dimuat", err);
+  }
+}
+
+loadRak()
+  .then(applyTodaySchedule)
+  .catch(err => showToast("Gagal memuat rak: " + err.message, "error"));
 
 // Saat halaman Input dibuka, kursor langsung siap di field PLU/Barcode.
 window.addEventListener("DOMContentLoaded", () => {
