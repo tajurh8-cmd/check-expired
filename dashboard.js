@@ -1,3 +1,4 @@
+import { enablePushNotifications, syncPushTokenIfAllowed } from "./push-notifications.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore, collection, getDocs, getDoc, doc, deleteDoc, query, where, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 initializeApp({apiKey:"AIzaSyD_I1HSrulXlPCj9_U_FhSfsYQhz-DxbMk",authDomain:"dbplu-62d92.firebaseapp.com",projectId:"dbplu-62d92"});
@@ -77,9 +78,14 @@ async function runDailyNotifications(items){
   localStorage.setItem(dailyKey,"1");
 }
 async function enableNotifications(){
-  if(!("Notification" in window))return ExpiUI.toast("Perangkat/browser ini tidak mendukung notifikasi","warning");
-  const result=await Notification.requestPermission();
-  if(result==="granted"){ExpiUI.toast("Notifikasi ExpiCheck aktif","success");sessionStorage.removeItem(`dashboard_${currentUser.storeid}`);loadDashboard(true);}
-  else ExpiUI.toast("Izin notifikasi belum diberikan","warning");
+  try {
+    await enablePushNotifications();
+    ExpiUI.toast("Push notification ExpiCheck aktif","success");
+    sessionStorage.removeItem(`dashboard_${currentUser.storeid}`);
+    loadDashboard(true);
+  } catch (err) {
+    ExpiUI.toast(err.message || "Gagal mengaktifkan notifikasi","warning",3500);
+  }
 }
 btnNotification?.addEventListener("click",enableNotifications);
+syncPushTokenIfAllowed();
