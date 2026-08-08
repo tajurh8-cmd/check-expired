@@ -1,12 +1,7 @@
 {
-  "name": "expicheck-wa-reminder",
+  "name": "expicheck-notifications",
   "private": true,
   "type": "module",
-  "scripts": {
-    "notify": "node scripts/notify-expired.js",
-    "push": "node scripts/push-reminder.js"
-  },
-  "dependencies": {
-    "firebase-admin": "^13.0.0"
-  }
+  "scripts": {"push": "node push-reminder.js"},
+  "dependencies": {"firebase-admin": "^13.0.0"}
 }
