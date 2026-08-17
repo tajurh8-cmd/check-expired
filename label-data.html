@@ -51,18 +51,23 @@ body *{visibility:hidden!important}
 
 </head><body>
 <div class="app-shell">
-<header class="page-head"><a class="back" href="label-expired.html"><i class="bi bi-arrow-left"></i></a><h1>Ambil Data Barang</h1></header>
+<header class="page-head"><a class="back" href="label-expired.html"><i class="bi bi-arrow-left"></i></a><h1>List Barang Master</h1></header>
 <div class="label-page">
  <div class="card-soft p-3 mb-3">
   <div id="storeInfo" class="fw-bold text-primary mb-2"></div>
-  <input id="search" class="form-control" placeholder="Cari nama / PLU / rak...">
+  <input id="search" class="form-control" placeholder="Cari nama produk / PLU / barcode...">
  </div>
- <div id="list" class="product-list d-grid gap-2"><div class="text-secondary text-center py-4">Memuat data...</div></div>
+ <div class="small text-secondary mb-2">
+  Ketik minimal 2 karakter. Sistem hanya mengambil maksimal 20 hasil per pencarian agar hemat Firestore.
+ </div>
+ <div id="list" class="product-list d-grid gap-2">
+  <div class="text-secondary text-center py-4">Ketik nama produk atau PLU untuk mencari.</div>
+ </div>
 </div></div>
 <script type="module">
 
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, getDocs, query, where, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, collection, getDocs, query, where, limit, orderBy, startAt, endAt } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig={
  apiKey:"AIzaSyD_I1HSrulXlPCj9_U_FhSfsYQhz-DxbMk",
@@ -77,24 +82,146 @@ const db=getFirestore(app);
 const user=JSON.parse(localStorage.getItem("user")||"null");
 if(!user?.storeid){localStorage.removeItem("user");location.href="login.html";throw new Error("Sesi toko tidak valid")}
 
-const $=id=>document.getElementById(id);$("storeInfo").textContent=`${user.storeid} - ${user.storename||""}`;
+const $=id=>document.getElementById(id);
+$("storeInfo").textContent=`${user.storeid} - ${user.storename||""}`;
+
 let items=[];
-function esc(v){return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
-function colorInfo(exp){const today=new Date();today.setHours(0,0,0,0);const days=Math.ceil((exp-today)/86400000);if(days<180)return ["< 6 Bulan","MERAH"];if(days<365)return ["6 sd 12 Bulan","KUNING"];if(days<730)return ["1 sd 2 Tahun","HIJAU"];return ["> 2 Tahun","BIRU"]}
+let searchTimer=null;
+let requestSeq=0;
+
+function esc(v){
+ return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))
+}
+
 function render(list){
- if(!list.length){$("list").innerHTML='<div class="text-secondary text-center py-4">Data tidak ditemukan.</div>';return}
- $("list").innerHTML=list.map(x=>`<button class="product-option text-start w-100" data-id="${esc(x.id)}"><div class="fw-bold">${esc(x.name)}</div><div class="small text-secondary">PLU ${esc(x.plu)} • Rak ${esc(x.rak)}</div><div class="small text-primary">Expired ${x.exp.toLocaleDateString("id-ID")}</div></button>`).join("");
+ if(!list.length){
+  $("list").innerHTML='<div class="text-secondary text-center py-4">Data tidak ditemukan.</div>';
+  return;
+ }
+
+ $("list").innerHTML=list.map(x=>`
+  <button class="product-option text-start w-100" data-id="${esc(x.id)}">
+   <div class="fw-bold">${esc(x.name)}</div>
+   <div class="small text-secondary">PLU ${esc(x.plu)}${x.barcode ? ` • Barcode ${esc(x.barcode)}` : ""}</div>
+   <div class="small text-primary">RH ${esc(x.rh)} hari</div>
+  </button>
+ `).join("");
+
  $("list").querySelectorAll("[data-id]").forEach(b=>b.onclick=()=>{
-  const x=items.find(z=>z.id===b.dataset.id);if(!x)return;
-  const [period,colorText]=colorInfo(x.exp);const q=JSON.parse(localStorage.getItem("expicheckLabelQueue")||"[]");
-  q.push({id:(crypto.randomUUID?.()||String(Date.now()+Math.random())),plu:x.plu,barcode:x.barcode,name:x.name,rh:x.rh,exp:x.exp.toISOString(),qty:1,period,colorText});
-  localStorage.setItem("expicheckLabelQueue",JSON.stringify(q));location.href="label-print.html";
+  const x=items.find(z=>z.id===b.dataset.id);
+  if(!x)return;
+
+  sessionStorage.setItem("expicheckPickedMaster",JSON.stringify({
+    plu:x.plu,
+    barcode:x.barcode,
+    name:x.name,
+    rh:x.rh
+  }));
+
+  location.href="label-input.html";
  })
 }
-try{
- const snap=await getDocs(query(collection(db,"edItems"),where("storeid","==",user.storeid),limit(300)));
- snap.forEach(d=>{const x=d.data();if(!x.expiredDate?.toDate)return;items.push({id:d.id,plu:String(x.plu||x.barcode||"").trim(),barcode:String(x.sourceBarcode||"").trim(),name:x.deskripsi||"-",rak:x.rak||"-",exp:x.expiredDate.toDate(),rh:Number(x.RH)||30})});
- items.sort((a,b)=>a.name.localeCompare(b.name));render(items);
-}catch(e){$("list").innerHTML=`<div class="alert alert-danger">Gagal membaca data: ${esc(e.message)}</div>`}
-$("search").addEventListener("input",()=>{const q=$("search").value.trim().toLowerCase();render(items.filter(x=>`${x.name} ${x.plu} ${x.rak}`.toLowerCase().includes(q)))})
+
+function normalizeDoc(d){
+ const x=d.data();
+ return {
+  id:d.id,
+  plu:String(x.PLU||"").trim(),
+  barcode:String(x.BARCODE||"").trim(),
+  name:String(x.DESKRIPSI||"-").trim(),
+  rh:Number(x.RH)||30
+ };
+}
+
+function cacheKey(term){
+ return "labelMasterSearch:"+term.toUpperCase();
+}
+
+function getCached(term){
+ try{
+  const raw=sessionStorage.getItem(cacheKey(term));
+  if(!raw)return null;
+  const obj=JSON.parse(raw);
+  if(Date.now()-obj.ts>300000){
+   sessionStorage.removeItem(cacheKey(term));
+   return null;
+  }
+  return obj.items||null;
+ }catch{return null}
+}
+
+function setCached(term,list){
+ try{
+  sessionStorage.setItem(cacheKey(term),JSON.stringify({ts:Date.now(),items:list}));
+ }catch{}
+}
+
+async function searchMaster(term){
+ const mySeq=++requestSeq;
+ const qtext=String(term||"").trim();
+
+ if(qtext.length<2){
+  items=[];
+  $("list").innerHTML='<div class="text-secondary text-center py-4">Ketik minimal 2 karakter.</div>';
+  return;
+ }
+
+ const cached=getCached(qtext);
+ if(cached){
+  items=cached;
+  render(items);
+  return;
+ }
+
+ $("list").innerHTML='<div class="text-secondary text-center py-4"><span class="spinner-border spinner-border-sm me-2"></span>Mencari...</div>';
+
+ let snap;
+
+ // Angka: query exact supaya 1 pencarian sangat hemat.
+ if(/^\d+$/.test(qtext)){
+   if(qtext.length<=6){
+     snap=await getDocs(query(
+       collection(db,"datasumber"),
+       where("PLU","==",qtext),
+       limit(20)
+     ));
+   }else{
+     const normalized=qtext.slice(0,-1);
+     snap=await getDocs(query(
+       collection(db,"datasumber"),
+       where("BARCODE","==",normalized),
+       limit(20)
+     ));
+   }
+ }else{
+   // Nama produk: prefix search, maksimal 20 dokumen.
+   const termUpper=qtext.toUpperCase();
+   snap=await getDocs(query(
+     collection(db,"datasumber"),
+     orderBy("DESKRIPSI"),
+     startAt(termUpper),
+     endAt(termUpper+"\uf8ff"),
+     limit(20)
+   ));
+ }
+
+ if(mySeq!==requestSeq)return;
+
+ items=snap.docs.map(normalizeDoc);
+ setCached(qtext,items);
+ render(items);
+}
+
+$("search").addEventListener("input",()=>{
+ clearTimeout(searchTimer);
+ const term=$("search").value;
+ searchTimer=setTimeout(()=>{
+  searchMaster(term).catch(e=>{
+   console.error(e);
+   $("list").innerHTML=`<div class="alert alert-danger">Gagal mencari data: ${esc(e.message)}</div>`;
+  });
+ },450);
+});
+
+setTimeout(()=>$("search").focus(),250);
 </script></body></html>
