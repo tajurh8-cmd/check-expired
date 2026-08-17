@@ -152,10 +152,26 @@ $("btnAdd").onclick=async()=>{
  }catch(e){toast(e.message||"Gagal membuat label","error")}
 };
 
+const urlParams=new URLSearchParams(location.search);
+
 let pickedMaster=null;
-try{
-  pickedMaster=JSON.parse(localStorage.getItem("expicheckPickedMaster")||"null");
-}catch{}
+
+// Prioritas 1: data dari URL hasil klik list barang.
+if(urlParams.get("from")==="master"){
+  pickedMaster={
+    plu:urlParams.get("plu")||"",
+    barcode:urlParams.get("barcode")||"",
+    name:urlParams.get("name")||"",
+    rh:Number(urlParams.get("rh"))||30
+  };
+}
+
+// Prioritas 2: fallback localStorage untuk kompatibilitas versi lama.
+if(!pickedMaster?.plu && !pickedMaster?.name){
+  try{
+    pickedMaster=JSON.parse(localStorage.getItem("expicheckPickedMaster")||"null");
+  }catch{}
+}
 
 if(pickedMaster?.plu || pickedMaster?.name){
   selectedProduct={
@@ -165,13 +181,19 @@ if(pickedMaster?.plu || pickedMaster?.name){
     rh:Number(pickedMaster.rh)||30
   };
 
+  // Isi form langsung.
   $("productCode").value=selectedProduct.plu;
   $("productName").value=selectedProduct.name;
 
-  // hapus setelah benar-benar berhasil masuk form
   localStorage.removeItem("expicheckPickedMaster");
 
-  toast("Barang masuk ke form","success");
+  toast("Barang berhasil dipilih","success");
+
+  // Bersihkan query param tanpa reload supaya tampilan URL rapi.
+  try{
+    history.replaceState({},document.title,"label-input.html");
+  }catch{}
+
   setTimeout(()=>$("expiredDate").focus(),250);
 }else{
   setTimeout(()=>$("productCode").focus(),250);

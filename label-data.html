@@ -207,19 +207,17 @@ $("list").addEventListener("click",(e)=>{
  const x=items.find(z=>String(z.id)===String(btn.dataset.id));
  if(!x)return;
 
- const picked={
-   plu:x.plu,
-   barcode:x.barcode,
-   name:x.name,
-   rh:x.rh,
-   pickedAt:Date.now()
- };
+ const params=new URLSearchParams({
+   from:"master",
+   plu:String(x.plu||""),
+   barcode:String(x.barcode||""),
+   name:String(x.name||""),
+   rh:String(x.rh||30),
+   t:String(Date.now())
+ });
 
- // localStorage lebih stabil untuk PWA dibanding sessionStorage
- localStorage.setItem("expicheckPickedMaster",JSON.stringify(picked));
-
- // query param memaksa halaman input mengambil versi terbaru, bukan cache lama
- location.href=`label-input.html?from=master&t=${Date.now()}`;
+ // Data dibawa langsung di URL agar pasti masuk ke form walau PWA/cache aktif.
+ location.href=`label-input.html?${params.toString()}`;
 });
 
 $("search").addEventListener("input",()=>{
