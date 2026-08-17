@@ -9,68 +9,300 @@
 <link rel="stylesheet" href="style.css">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0d47a1">
-<script>if(!localStorage.getItem('user'))location.href='login.html'</script>
+<script>if(!localStorage.getItem("user"))location.href="login.html"</script>
 <style>
-  body{background:#f3f6fb}
-  .label-toolbar{max-width:760px;margin:0 auto;padding:18px 16px 110px}
-  .preview-wrap{overflow:auto;border-radius:16px;background:#dfe4ea;padding:12px}
-  .sheet{width:1123px;min-height:794px;background:#fff;margin:auto;padding:12px;display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:185px;gap:8px;box-shadow:0 8px 25px rgba(0,0,0,.12)}
-  .expired-label{border:2px solid #111;background:#fff;display:flex;flex-direction:column;min-width:0;overflow:hidden}
-  .expired-label .title{text-align:center;font-weight:900;font-size:21px;line-height:1.1;padding:4px 2px 2px}
-  .expired-label table{width:calc(100% - 8px);margin:0 4px;border-collapse:collapse;table-layout:fixed}
-  .expired-label th,.expired-label td{border:1.4px solid #111;text-align:center}
-  .expired-label th{font-weight:900;font-size:14px;height:23px;line-height:1}
-  .expired-label td{height:76px}
-  .period-wrap{padding:7px 4px 4px;margin-top:auto}
-  .period{display:block;width:67%;border:1.5px solid #111;background:#14ef12;font-weight:900;font-style:italic;font-size:10px;line-height:1.15;padding:2px 4px;white-space:nowrap;overflow:hidden;text-overflow:clip}
-  @media(max-width:900px){.sheet{transform-origin:top left;transform:scale(.58);margin-bottom:-318px}.preview-wrap{height:490px}}
-  @media(max-width:520px){.sheet{transform:scale(.34);margin-bottom:-510px}.preview-wrap{height:300px}}
-  @page{size:A4 landscape;margin:5mm}
-  @media print{
-    html,body{background:#fff!important;width:auto;height:auto}
-    body *{visibility:hidden!important}
-    #printSheet,#printSheet *{visibility:visible!important}
-    #printSheet{position:absolute;left:0;top:0;width:287mm!important;min-height:200mm!important;padding:0!important;margin:0!important;box-shadow:none!important;display:grid!important;grid-template-columns:repeat(4,1fr)!important;grid-template-rows:repeat(4,1fr)!important;gap:1.5mm!important;transform:none!important}
-    .expired-label{border:0.6mm solid #111!important;break-inside:avoid}
-    .expired-label .title{font-size:5mm!important;padding:1mm .5mm .5mm!important}
-    .expired-label table{width:calc(100% - 2mm)!important;margin:0 1mm!important}
-    .expired-label th,.expired-label td{border:.35mm solid #111!important}
-    .expired-label th{font-size:3.3mm!important;height:5.5mm!important}
-    .expired-label td{height:19mm!important}
-    .period-wrap{padding:1.8mm 1mm 1mm!important}
-    .period{width:67%!important;font-size:2.4mm!important;border:.35mm solid #111!important;padding:.5mm 1mm!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;background:#14ef12!important}
-  }
+body{background:#f3f6fb}
+.label-page{max-width:760px;margin:0 auto;padding:18px 16px 110px}
+.field-label{font-weight:800;color:#17365d;margin-bottom:6px}
+.product-list{max-height:52vh;overflow:auto}
+.product-option{border:1px solid #e4e8ef;border-radius:14px;padding:12px;background:#fff;cursor:pointer}
+.product-option:active{background:#eef5ff}
+.queue-item{border:1px solid #e3e7ee;border-radius:14px;padding:12px;background:#fff}
+.preview-wrap{overflow:auto;border-radius:16px;background:#dfe4ea;padding:12px}
+.sheet{width:1123px;min-height:794px;background:#fff;margin:auto;padding:12px;display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:185px;gap:8px;box-shadow:0 8px 25px rgba(0,0,0,.12)}
+.expired-label{border:2px solid #111;background:#fff;display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.expired-label .title{text-align:center;font-weight:900;font-size:21px;line-height:1.1;padding:4px 2px 2px}
+.expired-label table{width:calc(100% - 8px);margin:0 4px;border-collapse:collapse;table-layout:fixed}
+.expired-label th,.expired-label td{border:1.4px solid #111;text-align:center}
+.expired-label th{font-weight:900;font-size:14px;height:23px;line-height:1}
+.expired-label td{height:76px;font-size:25px;font-weight:900;vertical-align:middle}
+.period-wrap{padding:7px 4px 4px;margin-top:auto}
+.period{display:block;width:72%;border:1.5px solid #111;font-weight:900;font-style:italic;font-size:10px;line-height:1.15;padding:2px 4px;white-space:nowrap;overflow:hidden;text-overflow:clip}
+.period.p-red{background:#ff4d4d}.period.p-orange{background:#ffc107}.period.p-green{background:#14ef12}.period.p-blue{background:#49a8ff}
+@media(max-width:900px){.sheet{transform-origin:top left;transform:scale(.58);margin-bottom:-318px}.preview-wrap{height:490px}}
+@media(max-width:520px){.sheet{transform:scale(.34);margin-bottom:-510px}.preview-wrap{height:300px}}
+@page{size:A4 landscape;margin:5mm}
+@media print{
+html,body{background:#fff!important;width:auto;height:auto}
+body *{visibility:hidden!important}
+#printSheet,#printSheet *{visibility:visible!important}
+#printSheet{position:absolute;left:0;top:0;width:287mm!important;min-height:200mm!important;padding:0!important;margin:0!important;box-shadow:none!important;display:grid!important;grid-template-columns:repeat(4,1fr)!important;grid-template-rows:repeat(4,1fr)!important;gap:1.5mm!important;transform:none!important}
+.expired-label{border:.6mm solid #111!important;break-inside:avoid}
+.expired-label .title{font-size:5mm!important;padding:1mm .5mm .5mm!important}
+.expired-label table{width:calc(100% - 2mm)!important;margin:0 1mm!important}
+.expired-label th,.expired-label td{border:.35mm solid #111!important}
+.expired-label th{font-size:3.3mm!important;height:5.5mm!important}
+.expired-label td{height:19mm!important;font-size:6mm!important}
+.period-wrap{padding:1.8mm 1mm 1mm!important}
+.period{width:72%!important;font-size:2.4mm!important;border:.35mm solid #111!important;padding:.5mm 1mm!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+}
 </style>
 </head>
 <body>
 <div class="app-shell">
-<header class="page-head"><a class="back" href="index.html"><i class="bi bi-arrow-left"></i></a><h1>Create Label Expired</h1></header>
-<div class="label-toolbar">
+<header class="page-head">
+<a class="back" href="index.html"><i class="bi bi-arrow-left"></i></a>
+<h1>Create Label Expired</h1>
+</header>
+
+<div class="label-page">
   <div class="card-soft p-3 mb-3">
-    <label class="form-label fw-bold">Periode Label</label>
-    <input id="periodText" class="form-control mb-3" value="PERIODE EXPIRED 1 sd 2 Tahun" maxlength="40">
-    <div class="row g-2">
-      <div class="col-6"><label class="form-label fw-bold">Jumlah Label</label><input id="labelCount" type="number" min="1" max="64" value="16" class="form-control"></div>
-      <div class="col-6"><label class="form-label fw-bold">Layout</label><input class="form-control" value="A4 Landscape • 4 Kolom" readonly></div>
+    <div id="storeInfo" class="fw-bold text-primary mb-3"></div>
+
+    <label class="field-label">PLU / Barcode</label>
+    <div class="input-group mb-2">
+      <input id="productCode" class="form-control" inputmode="numeric" placeholder="Ketik PLU / barcode">
+      <button id="btnLookup" class="btn btn-outline-primary"><i class="bi bi-search"></i></button>
     </div>
-    <div class="d-grid gap-2 mt-3"><button id="btnGenerate" class="btn btn-outline-primary"><i class="bi bi-arrow-repeat me-2"></i>UPDATE PREVIEW</button><button id="btnPrint" class="btn btn-primary"><i class="bi bi-printer me-2"></i>PRINT LABEL</button></div>
+
+    <button id="btnPickExisting" class="btn btn-outline-secondary w-100 mb-3">
+      <i class="bi bi-list-ul me-2"></i>AMBIL DARI LIST DATA BARANG
+    </button>
+
+    <label class="field-label">Produk</label>
+    <input id="productName" class="form-control mb-3" placeholder="Produk akan muncul otomatis" readonly>
+
+    <label class="field-label">Tanggal Expired</label>
+    <input id="expiredDate" class="form-control mb-3" inputmode="numeric" placeholder="DDMMYY / DDMMYYYY">
+
+    <div class="row g-2">
+      <div class="col-6">
+        <label class="field-label">Jumlah Label</label>
+        <input id="labelQty" type="number" min="1" max="100" value="1" class="form-control">
+      </div>
+      <div class="col-6">
+        <label class="field-label">Periode</label>
+        <select id="periodMode" class="form-select">
+          <option value="AUTO">AUTO</option>
+          <option value="< 6 Bulan">&lt; 6 Bulan</option>
+          <option value="6 sd 12 Bulan">6 sd 12 Bulan</option>
+          <option value="1 sd 2 Tahun">1 sd 2 Tahun</option>
+          <option value="> 2 Tahun">&gt; 2 Tahun</option>
+        </select>
+      </div>
+    </div>
+
+    <button id="btnAdd" class="btn btn-primary w-100 mt-3">
+      <i class="bi bi-plus-circle me-2"></i>TAMBAH KE LABEL
+    </button>
   </div>
+
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <div class="fw-bold">List Label <span id="queueCount" class="badge bg-primary">0</span></div>
+    <button id="btnClear" class="btn btn-sm btn-outline-danger">Kosongkan</button>
+  </div>
+  <div id="queueList" class="d-grid gap-2 mb-3">
+    <div class="text-secondary small text-center py-3">Belum ada label.</div>
+  </div>
+
+  <div class="d-grid gap-2 mb-3">
+    <button id="btnPreview" class="btn btn-outline-primary"><i class="bi bi-eye me-2"></i>UPDATE PREVIEW</button>
+    <button id="btnPrint" class="btn btn-primary"><i class="bi bi-printer me-2"></i>PRINT LABEL</button>
+  </div>
+
   <div class="small text-secondary mb-2">Preview hasil print</div>
   <div class="preview-wrap"><div id="printSheet" class="sheet"></div></div>
 </div>
 </div>
-<nav class="bottom-nav"><a href="index.html"><i class="bi bi-house-door"></i>Dashboard</a><a href="input.html"><i class="bi bi-upc-scan"></i>Input</a><a class="active" href="label-expired.html"><i class="bi bi-tags-fill"></i>Label</a><a href="index.html#list"><i class="bi bi-file-earmark-text"></i>Riwayat</a></nav>
-<script>
-const sheet=document.getElementById('printSheet');
-const period=document.getElementById('periodText');
-const count=document.getElementById('labelCount');
-function labelHTML(text){return `<div class="expired-label"><div class="title">LABEL EXPIRED</div><table><thead><tr><th>TGL</th><th>BULAN</th><th>TAHUN</th></tr></thead><tbody><tr><td></td><td></td><td></td></tr></tbody></table><div class="period-wrap"><span class="period">${escapeHtml(text)}</span></div></div>`}
-function escapeHtml(v){return String(v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
-function render(){const n=Math.max(1,Math.min(64,Number(count.value)||16));count.value=n;const t=(period.value||'PERIODE EXPIRED 1 sd 2 Tahun').trim();sheet.innerHTML=Array.from({length:n},()=>labelHTML(t)).join('')}
-document.getElementById('btnGenerate').onclick=render;
-period.addEventListener('input',render);count.addEventListener('change',render);
-document.getElementById('btnPrint').onclick=()=>{render();window.print()};
-render();
-if('serviceWorker'in navigator)addEventListener('load',()=>navigator.serviceWorker.register('service-worker.js'));
+
+<!-- MODAL LIST DATA BARANG -->
+<div class="modal fade" id="existingModal" tabindex="-1">
+ <div class="modal-dialog modal-dialog-scrollable modal-fullscreen-sm-down">
+  <div class="modal-content">
+   <div class="modal-header">
+    <h5 class="modal-title">Pilih Data Barang</h5>
+    <button class="btn-close" data-bs-dismiss="modal"></button>
+   </div>
+   <div class="modal-body">
+    <input id="existingSearch" class="form-control mb-3" placeholder="Cari nama / PLU / rak...">
+    <div id="existingList" class="product-list d-grid gap-2">
+      <div class="text-secondary text-center py-4">Memuat data...</div>
+    </div>
+   </div>
+  </div>
+ </div>
+</div>
+
+<nav class="bottom-nav">
+<a href="index.html"><i class="bi bi-house-door"></i>Dashboard</a>
+<a href="input.html"><i class="bi bi-upc-scan"></i>Input</a>
+<a class="active" href="label-expired.html"><i class="bi bi-tags-fill"></i>Label</a>
+<a href="index.html#list"><i class="bi bi-file-earmark-text"></i>Riwayat</a>
+</nav>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script type="module">
+import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, getDocs, query, where, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig={
+ apiKey:"AIzaSyD_I1HSrulXlPCj9_U_FhSfsYQhz-DxbMk",
+ authDomain:"dbplu-62d92.firebaseapp.com",
+ projectId:"dbplu-62d92",
+ storageBucket:"dbplu-62d92.firebasestorage.app",
+ messagingSenderId:"623211397382",
+ appId:"1:623211397382:web:db9a7bd4abcc7f44261e87"
+};
+const app=getApps().length?getApp():initializeApp(firebaseConfig);
+const db=getFirestore(app);
+const user=JSON.parse(localStorage.getItem("user")||"null");
+if(!user?.storeid){localStorage.removeItem("user");location.href="login.html";throw new Error("Sesi toko tidak valid")}
+
+const $=id=>document.getElementById(id);
+$("storeInfo").textContent=`${user.storeid} - ${user.storename||""}`;
+
+let selectedProduct=null;
+let existingItems=[];
+let queue=[];
+const modal=new bootstrap.Modal($("existingModal"));
+
+function esc(v){return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+function toast(msg,type="success"){
+ let el=$("labelToast");
+ if(!el){el=document.createElement("div");el.id="labelToast";el.style.cssText="position:fixed;left:50%;bottom:90px;transform:translateX(-50%);z-index:10000;max-width:calc(100vw - 30px);padding:11px 15px;border-radius:12px;color:white;font-weight:700;box-shadow:0 8px 25px #0004";document.body.appendChild(el)}
+ el.style.background=type==="error"?"#dc2626":type==="warning"?"#d97706":"#15803d";el.textContent=msg;el.hidden=false;clearTimeout(window.__lt);window.__lt=setTimeout(()=>el.hidden=true,2500)
+}
+function parseDate(v){
+ const n=String(v||"").replace(/\D/g,"");
+ if(n.length!==6&&n.length!==8)return null;
+ const d=Number(n.slice(0,2)),m=Number(n.slice(2,4)),y=Number(n.length===6?"20"+n.slice(4):n.slice(4));
+ const x=new Date(y,m-1,d);
+ return x.getFullYear()===y&&x.getMonth()===m-1&&x.getDate()===d?x:null
+}
+function fmtInputDate(d){return `${String(d.getDate()).padStart(2,"0")}${String(d.getMonth()+1).padStart(2,"0")}${d.getFullYear()}`}
+function normalizeCode(v){return String(v||"").trim()}
+function periodFor(exp){
+ if($("periodMode").value!=="AUTO")return $("periodMode").value;
+ const today=new Date();today.setHours(0,0,0,0);
+ const days=Math.ceil((exp-today)/86400000);
+ if(days<180)return "< 6 Bulan";
+ if(days<365)return "6 sd 12 Bulan";
+ if(days<730)return "1 sd 2 Tahun";
+ return "> 2 Tahun"
+}
+function periodClass(p){
+ if(p.startsWith("<"))return "p-red";
+ if(p.startsWith("6"))return "p-orange";
+ if(p.startsWith("1"))return "p-green";
+ return "p-blue"
+}
+async function lookup(){
+ const code=normalizeCode($("productCode").value);
+ if(!code){toast("Masukkan PLU / barcode","warning");return false}
+ $("productName").value="Mencari...";
+ let field,value;
+ if(code.length<=6){field="PLU";value=code}
+ else{field="BARCODE";value=code.slice(0,-1)}
+ const snap=await getDocs(query(collection(db,"datasumber"),where(field,"==",value),limit(1)));
+ if(snap.empty){selectedProduct=null;$("productName").value="Tidak ditemukan";toast("Produk tidak ditemukan","error");return false}
+ const x=snap.docs[0].data();
+ selectedProduct={plu:String(x.PLU||"").trim(),barcode:String(x.BARCODE||"").trim(),name:x.DESKRIPSI||"-",rh:Number(x.RH)||30};
+ $("productCode").value=selectedProduct.plu||code;
+ $("productName").value=selectedProduct.name;
+ return true
+}
+$("btnLookup").onclick=()=>lookup().catch(e=>toast(e.message,"error"));
+$("productCode").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();lookup().catch(x=>toast(x.message,"error"))}});
+
+async function loadExisting(){
+ $("existingList").innerHTML='<div class="text-secondary text-center py-4">Memuat data...</div>';
+ try{
+  const snap=await getDocs(query(collection(db,"edItems"),where("storeid","==",user.storeid),limit(300)));
+  existingItems=[];
+  snap.forEach(d=>{
+   const x=d.data();
+   if(!x.expiredDate?.toDate)return;
+   const exp=x.expiredDate.toDate();
+   existingItems.push({
+    id:d.id,plu:String(x.plu||x.barcode||"").trim(),barcode:String(x.sourceBarcode||"").trim(),
+    name:x.deskripsi||"-",rak:x.rak||"-",exp,rh:Number(x.RH)||30
+   });
+  });
+  existingItems.sort((a,b)=>a.name.localeCompare(b.name));
+  renderExisting(existingItems);
+ }catch(e){$("existingList").innerHTML=`<div class="alert alert-danger">Gagal membaca data: ${esc(e.message)}</div>`}
+}
+function renderExisting(items){
+ if(!items.length){$("existingList").innerHTML='<div class="text-secondary text-center py-4">Data barang tidak ditemukan.</div>';return}
+ $("existingList").innerHTML=items.map((x,i)=>`
+  <button type="button" class="product-option text-start w-100" data-pick="${esc(x.id)}">
+   <div class="fw-bold">${esc(x.name)}</div>
+   <div class="small text-secondary">PLU ${esc(x.plu)} • Rak ${esc(x.rak)}</div>
+   <div class="small text-primary">Expired ${x.exp.toLocaleDateString("id-ID")}</div>
+  </button>`).join("");
+ $("existingList").querySelectorAll("[data-pick]").forEach(b=>b.onclick=()=>{
+  const x=existingItems.find(z=>z.id===b.dataset.pick);if(!x)return;
+  selectedProduct={plu:x.plu,barcode:x.barcode,name:x.name,rh:x.rh};
+  $("productCode").value=x.plu;$("productName").value=x.name;$("expiredDate").value=fmtInputDate(x.exp);
+  modal.hide();toast("Data barang dipilih");
+ })
+}
+$("btnPickExisting").onclick=()=>{modal.show();loadExisting()};
+$("existingSearch").addEventListener("input",()=>{
+ const q=$("existingSearch").value.trim().toLowerCase();
+ renderExisting(existingItems.filter(x=>`${x.name} ${x.plu} ${x.rak}`.toLowerCase().includes(q)))
+});
+
+$("btnAdd").onclick=async()=>{
+ try{
+  if(!selectedProduct){
+   const ok=await lookup();if(!ok)return;
+  }
+  const exp=parseDate($("expiredDate").value);
+  const qty=Math.max(1,Math.min(100,Number($("labelQty").value)||1));
+  if(!exp)throw new Error("Tanggal expired tidak valid");
+  const period=periodFor(exp);
+  queue.push({id:crypto.randomUUID?.()||String(Date.now()+Math.random()),...selectedProduct,exp,qty,period});
+  renderQueue();renderLabels();
+  $("labelQty").value=1;
+  toast(`${qty} label ditambahkan`);
+ }catch(e){toast(e.message||"Gagal menambah label","error")}
+}
+function renderQueue(){
+ $("queueCount").textContent=queue.reduce((a,x)=>a+x.qty,0);
+ if(!queue.length){$("queueList").innerHTML='<div class="text-secondary small text-center py-3">Belum ada label.</div>';return}
+ $("queueList").innerHTML=queue.map(x=>`
+  <div class="queue-item">
+   <div class="d-flex justify-content-between gap-2">
+    <div><div class="fw-bold">${esc(x.name)}</div><div class="small text-secondary">PLU ${esc(x.plu)} • Exp ${x.exp.toLocaleDateString("id-ID")}</div><div class="small text-primary">${esc(x.period)} • ${x.qty} label</div></div>
+    <button class="btn btn-sm btn-outline-danger align-self-start" data-del="${esc(x.id)}"><i class="bi bi-trash"></i></button>
+   </div>
+  </div>`).join("");
+ $("queueList").querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{queue=queue.filter(x=>x.id!==b.dataset.del);renderQueue();renderLabels()})
+}
+$("btnClear").onclick=()=>{queue=[];renderQueue();renderLabels()};
+
+function labelHTML(x){
+ const d=String(x.exp.getDate()).padStart(2,"0");
+ const m=String(x.exp.getMonth()+1).padStart(2,"0");
+ const y=x.exp.getFullYear();
+ return `<div class="expired-label">
+  <div class="title">LABEL EXPIRED</div>
+  <table><thead><tr><th>TGL</th><th>BULAN</th><th>TAHUN</th></tr></thead>
+  <tbody><tr><td>${d}</td><td>${m}</td><td>${y}</td></tr></tbody></table>
+  <div class="period-wrap"><span class="period ${periodClass(x.period)}">PERIODE EXPIRED ${esc(x.period)}</span></div>
+ </div>`
+}
+function renderLabels(){
+ const labels=[];
+ queue.forEach(x=>{for(let i=0;i<x.qty;i++)labels.push(labelHTML(x))});
+ $("printSheet").innerHTML=labels.join("");
+}
+$("btnPreview").onclick=renderLabels;
+$("btnPrint").onclick=()=>{if(!queue.length){toast("Belum ada label untuk dicetak","warning");return}renderLabels();window.print()};
+
+renderQueue();renderLabels();
+if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("service-worker.js"));
 </script>
-</body></html>
+</body>
+</html>

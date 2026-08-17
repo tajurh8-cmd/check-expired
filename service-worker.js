@@ -1,4 +1,4 @@
-const CACHE_NAME = "expicheck-label-expired-v1";
+const CACHE_NAME = "expicheck-label-input-list-v2";
 const APP_SHELL = [
   "./", "./login.html", "./index.html", "./input.html", "./jadwal.html", "./label-expired.html", "./admin.html",
   "./login.js", "./dashboard.js", "./app.js", "./jadwal.js", "./admin.js",
