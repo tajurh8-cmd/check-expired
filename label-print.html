@@ -22,12 +22,13 @@ body{background:#f3f6fb}
 .sheet{width:1123px;min-height:794px;background:#fff;margin:auto;padding:12px;display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:185px;gap:8px;box-shadow:0 8px 25px rgba(0,0,0,.12)}
 .expired-label{border:2px solid #111;background:#fff;display:flex;flex-direction:column;min-width:0;overflow:hidden;color:#000}
 .expired-label .title{text-align:center;font-weight:900;font-size:21px;line-height:1.1;padding:4px 2px 2px}
+.expired-label .product-line{display:flex;gap:8px;align-items:center;padding:2px 6px 4px;font-size:11px;font-weight:900;white-space:nowrap;overflow:hidden}.expired-label .product-line .plu{flex:0 0 30%}.expired-label .product-line .desc{flex:1;overflow:hidden;text-overflow:ellipsis}
+.expired-label .bottom-line{display:flex;align-items:center;justify-content:space-between;padding:7px 5px 5px;margin-top:auto;font-size:10px;font-weight:900}.expired-label .color-text{border:1.5px solid #111;min-width:78px;padding:2px 4px;line-height:1;text-align:left}
 .expired-label table{width:calc(100% - 8px);margin:0 4px;border-collapse:collapse;table-layout:fixed}
 .expired-label th,.expired-label td{border:1.4px solid #111;text-align:center}
 .expired-label th{font-weight:900;font-size:14px;height:23px;line-height:1}
 .expired-label td{height:76px;font-size:25px;font-weight:900;vertical-align:middle}
-.period-wrap{padding:7px 4px 4px;margin-top:auto}
-.period{display:block;width:88%;border:1.5px solid #111;font-weight:900;font-style:italic;font-size:10px;line-height:1.15;padding:2px 4px;white-space:nowrap;overflow:hidden;text-overflow:clip;background:#fff;color:#000}
+
 @media(max-width:900px){.sheet{transform-origin:top left;transform:scale(.58);margin-bottom:-318px}.preview-wrap{height:490px}}
 @media(max-width:520px){.sheet{transform:scale(.34);margin-bottom:-510px}.preview-wrap{height:300px}}
 @page{size:A4 landscape;margin:5mm}
@@ -38,12 +39,13 @@ body *{visibility:hidden!important}
 #printSheet{position:absolute;left:0;top:0;width:287mm!important;min-height:200mm!important;padding:0!important;margin:0!important;box-shadow:none!important;display:grid!important;grid-template-columns:repeat(4,1fr)!important;grid-template-rows:repeat(4,1fr)!important;gap:1.5mm!important;transform:none!important}
 .expired-label{border:.6mm solid #111!important;break-inside:avoid}
 .expired-label .title{font-size:5mm!important;padding:1mm .5mm .5mm!important}
+.expired-label .product-line{font-size:2.7mm!important;padding:.5mm 1.5mm 1mm!important;gap:2mm!important}
+.expired-label .bottom-line{font-size:2.5mm!important;padding:1.8mm 1mm 1mm!important}.expired-label .color-text{border:.35mm solid #111!important;min-width:20mm!important;padding:.5mm 1mm!important}
 .expired-label table{width:calc(100% - 2mm)!important;margin:0 1mm!important}
 .expired-label th,.expired-label td{border:.35mm solid #111!important}
 .expired-label th{font-size:3.3mm!important;height:5.5mm!important}
 .expired-label td{height:19mm!important;font-size:6mm!important}
-.period-wrap{padding:1.8mm 1mm 1mm!important}
-.period{width:88%!important;font-size:2.4mm!important;border:.35mm solid #111!important;padding:.5mm 1mm!important}
+
 }
 </style>
 
@@ -69,8 +71,8 @@ let queue=JSON.parse(localStorage.getItem("expicheckLabelQueue")||"[]");
 function esc(v){return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
 function save(){localStorage.setItem("expicheckLabelQueue",JSON.stringify(queue))}
 function labelHTML(x){
- const exp=new Date(x.exp);const d=String(exp.getDate()).padStart(2,"0"),m=String(exp.getMonth()+1).padStart(2,"0"),y=exp.getFullYear();
- return `<div class="expired-label"><div class="title">LABEL EXPIRED</div><table><thead><tr><th>TGL</th><th>BULAN</th><th>TAHUN</th></tr></thead><tbody><tr><td>${d}</td><td>${m}</td><td>${y}</td></tr></tbody></table><div class="period-wrap"><span class="period">PERIODE EXPIRED ${esc(x.period)} • WARNA: ${esc(x.colorText||"")}</span></div></div>`
+ const exp=new Date(x.exp);const d=String(exp.getDate()).padStart(2,"0"),m=String(exp.getMonth()+1).padStart(2,"0"),y=String(exp.getFullYear()).slice(-2);
+ return `<div class="expired-label"><div class="title">LABEL EXPIRED</div><div class="product-line"><span class="plu">${esc(x.plu||"")}</span><span class="desc">${esc(x.name||"")}</span></div><table><thead><tr><th>TGL</th><th>BULAN</th><th>TAHUN</th></tr></thead><tbody><tr><td>${d}</td><td>${m}</td><td>${y}</td></tr></tbody></table><div class="bottom-line"><span class="color-text">${esc(x.colorText||"")}</span><span>RH:${esc(x.rh??"")}</span></div></div>`
 }
 function render(){
  $("count").textContent=queue.reduce((a,x)=>a+(Number(x.qty)||1),0);
