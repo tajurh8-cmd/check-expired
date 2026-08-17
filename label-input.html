@@ -152,19 +152,28 @@ $("btnAdd").onclick=async()=>{
  }catch(e){toast(e.message||"Gagal membuat label","error")}
 };
 
-const pickedMaster = JSON.parse(sessionStorage.getItem("expicheckPickedMaster") || "null");
-if (pickedMaster) {
-  selectedProduct = {
-    plu: String(pickedMaster.plu || "").trim(),
-    barcode: String(pickedMaster.barcode || "").trim(),
-    name: pickedMaster.name || "-",
-    rh: Number(pickedMaster.rh) || 30
+let pickedMaster=null;
+try{
+  pickedMaster=JSON.parse(localStorage.getItem("expicheckPickedMaster")||"null");
+}catch{}
+
+if(pickedMaster?.plu || pickedMaster?.name){
+  selectedProduct={
+    plu:String(pickedMaster.plu||"").trim(),
+    barcode:String(pickedMaster.barcode||"").trim(),
+    name:String(pickedMaster.name||"-").trim(),
+    rh:Number(pickedMaster.rh)||30
   };
-  $("productCode").value = selectedProduct.plu;
-  $("productName").value = selectedProduct.name;
-  sessionStorage.removeItem("expicheckPickedMaster");
+
+  $("productCode").value=selectedProduct.plu;
+  $("productName").value=selectedProduct.name;
+
+  // hapus setelah benar-benar berhasil masuk form
+  localStorage.removeItem("expicheckPickedMaster");
+
+  toast("Barang masuk ke form","success");
   setTimeout(()=>$("expiredDate").focus(),250);
-} else {
+}else{
   setTimeout(()=>$("productCode").focus(),250);
 }
 
