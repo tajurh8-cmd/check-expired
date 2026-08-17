@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Create Label Expired | ExpiCheck</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0d47a1">
+<script>if(!localStorage.getItem('user'))location.href='login.html'</script>
+<style>
+  body{background:#f3f6fb}
+  .label-toolbar{max-width:760px;margin:0 auto;padding:18px 16px 110px}
+  .preview-wrap{overflow:auto;border-radius:16px;background:#dfe4ea;padding:12px}
+  .sheet{width:1123px;min-height:794px;background:#fff;margin:auto;padding:12px;display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:185px;gap:8px;box-shadow:0 8px 25px rgba(0,0,0,.12)}
+  .expired-label{border:2px solid #111;background:#fff;display:flex;flex-direction:column;min-width:0;overflow:hidden}
+  .expired-label .title{text-align:center;font-weight:900;font-size:21px;line-height:1.1;padding:4px 2px 2px}
+  .expired-label table{width:calc(100% - 8px);margin:0 4px;border-collapse:collapse;table-layout:fixed}
+  .expired-label th,.expired-label td{border:1.4px solid #111;text-align:center}
+  .expired-label th{font-weight:900;font-size:14px;height:23px;line-height:1}
+  .expired-label td{height:76px}
+  .period-wrap{padding:7px 4px 4px;margin-top:auto}
+  .period{display:block;width:67%;border:1.5px solid #111;background:#14ef12;font-weight:900;font-style:italic;font-size:10px;line-height:1.15;padding:2px 4px;white-space:nowrap;overflow:hidden;text-overflow:clip}
+  @media(max-width:900px){.sheet{transform-origin:top left;transform:scale(.58);margin-bottom:-318px}.preview-wrap{height:490px}}
+  @media(max-width:520px){.sheet{transform:scale(.34);margin-bottom:-510px}.preview-wrap{height:300px}}
+  @page{size:A4 landscape;margin:5mm}
+  @media print{
+    html,body{background:#fff!important;width:auto;height:auto}
+    body *{visibility:hidden!important}
+    #printSheet,#printSheet *{visibility:visible!important}
+    #printSheet{position:absolute;left:0;top:0;width:287mm!important;min-height:200mm!important;padding:0!important;margin:0!important;box-shadow:none!important;display:grid!important;grid-template-columns:repeat(4,1fr)!important;grid-template-rows:repeat(4,1fr)!important;gap:1.5mm!important;transform:none!important}
+    .expired-label{border:0.6mm solid #111!important;break-inside:avoid}
+    .expired-label .title{font-size:5mm!important;padding:1mm .5mm .5mm!important}
+    .expired-label table{width:calc(100% - 2mm)!important;margin:0 1mm!important}
+    .expired-label th,.expired-label td{border:.35mm solid #111!important}
+    .expired-label th{font-size:3.3mm!important;height:5.5mm!important}
+    .expired-label td{height:19mm!important}
+    .period-wrap{padding:1.8mm 1mm 1mm!important}
+    .period{width:67%!important;font-size:2.4mm!important;border:.35mm solid #111!important;padding:.5mm 1mm!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;background:#14ef12!important}
+  }
+</style>
+</head>
+<body>
+<div class="app-shell">
+<header class="page-head"><a class="back" href="index.html"><i class="bi bi-arrow-left"></i></a><h1>Create Label Expired</h1></header>
+<div class="label-toolbar">
+  <div class="card-soft p-3 mb-3">
+    <label class="form-label fw-bold">Periode Label</label>
+    <input id="periodText" class="form-control mb-3" value="PERIODE EXPIRED 1 sd 2 Tahun" maxlength="40">
+    <div class="row g-2">
+      <div class="col-6"><label class="form-label fw-bold">Jumlah Label</label><input id="labelCount" type="number" min="1" max="64" value="16" class="form-control"></div>
+      <div class="col-6"><label class="form-label fw-bold">Layout</label><input class="form-control" value="A4 Landscape • 4 Kolom" readonly></div>
+    </div>
+    <div class="d-grid gap-2 mt-3"><button id="btnGenerate" class="btn btn-outline-primary"><i class="bi bi-arrow-repeat me-2"></i>UPDATE PREVIEW</button><button id="btnPrint" class="btn btn-primary"><i class="bi bi-printer me-2"></i>PRINT LABEL</button></div>
+  </div>
+  <div class="small text-secondary mb-2">Preview hasil print</div>
+  <div class="preview-wrap"><div id="printSheet" class="sheet"></div></div>
+</div>
+</div>
+<nav class="bottom-nav"><a href="index.html"><i class="bi bi-house-door"></i>Dashboard</a><a href="input.html"><i class="bi bi-upc-scan"></i>Input</a><a class="active" href="label-expired.html"><i class="bi bi-tags-fill"></i>Label</a><a href="index.html#list"><i class="bi bi-file-earmark-text"></i>Riwayat</a></nav>
+<script>
+const sheet=document.getElementById('printSheet');
+const period=document.getElementById('periodText');
+const count=document.getElementById('labelCount');
+function labelHTML(text){return `<div class="expired-label"><div class="title">LABEL EXPIRED</div><table><thead><tr><th>TGL</th><th>BULAN</th><th>TAHUN</th></tr></thead><tbody><tr><td></td><td></td><td></td></tr></tbody></table><div class="period-wrap"><span class="period">${escapeHtml(text)}</span></div></div>`}
+function escapeHtml(v){return String(v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
+function render(){const n=Math.max(1,Math.min(64,Number(count.value)||16));count.value=n;const t=(period.value||'PERIODE EXPIRED 1 sd 2 Tahun').trim();sheet.innerHTML=Array.from({length:n},()=>labelHTML(t)).join('')}
+document.getElementById('btnGenerate').onclick=render;
+period.addEventListener('input',render);count.addEventListener('change',render);
+document.getElementById('btnPrint').onclick=()=>{render();window.print()};
+render();
+if('serviceWorker'in navigator)addEventListener('load',()=>navigator.serviceWorker.register('service-worker.js'));
+</script>
+</body></html>

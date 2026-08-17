@@ -1,6 +1,6 @@
-const CACHE_NAME = "expicheck-scanner-fix-v2";
+const CACHE_NAME = "expicheck-label-expired-v1";
 const APP_SHELL = [
-  "./", "./login.html", "./index.html", "./input.html", "./jadwal.html", "./admin.html",
+  "./", "./login.html", "./index.html", "./input.html", "./jadwal.html", "./label-expired.html", "./admin.html",
   "./login.js", "./dashboard.js", "./app.js", "./jadwal.js", "./admin.js",
   "./push-notifications.js", "./push-config.js",
   "./manifest.json", "./style.css", "./ui-dialog.js", "./icon-192.png", "./icon-512.png"
