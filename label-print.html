@@ -1,13 +1,10 @@
 <!doctype html>
-<html lang="id">
-<head>
+<html lang="id"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Create Label Expired | ExpiCheck</title>
+<title>Hasil Label | ExpiCheck</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-<link rel="stylesheet" href="style.css"><link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0d47a1">
-<script>if(!localStorage.getItem("user"))location.href="login.html"</script>
+<link rel="stylesheet" href="style.css">
 
 <style>
 body{background:#f3f6fb}
@@ -50,46 +47,39 @@ body *{visibility:hidden!important}
 }
 </style>
 
-</head>
-<body>
+</head><body>
 <div class="app-shell">
-<header class="page-head"><a class="back" href="index.html"><i class="bi bi-arrow-left"></i></a><h1>Create Label Expired</h1></header>
+<header class="page-head"><a class="back" href="label-expired.html"><i class="bi bi-arrow-left"></i></a><h1>Hasil Label</h1></header>
 <div class="label-page">
- <div class="card-soft p-3 mb-3">
-  <div class="fw-bold text-primary">Modul Label Expired</div>
-  <div class="small text-secondary">Terpisah dari Input Expired utama. Data di sini hanya untuk membuat label.</div>
+ <div class="d-flex justify-content-between align-items-center mb-2">
+  <div class="fw-bold">List Label <span id="count" class="badge bg-primary">0</span></div>
+  <button id="clear" class="btn btn-sm btn-outline-danger">Kosongkan</button>
  </div>
-
- <div class="d-grid gap-3">
-  <a class="menu-card" href="label-input.html">
-   <div class="ico"><i class="bi bi-pencil-square"></i></div>
-   <div><div class="ttl">Input Label</div><div class="sub">Input PLU / barcode, tanggal expired dan jumlah label.</div></div>
-  </a>
-  <a class="menu-card" href="label-data.html">
-   <div class="ico"><i class="bi bi-list-check"></i></div>
-   <div><div class="ttl">Ambil dari Data Barang</div><div class="sub">Pilih item yang sudah ada di data expired toko.</div></div>
-  </a>
-  <a class="menu-card" href="label-print.html">
-   <div class="ico"><i class="bi bi-printer"></i></div>
-   <div><div class="ttl">Hasil Label / Print</div><div class="sub">Lihat daftar label yang sudah dibuat dan cetak A4 landscape.</div></div>
-  </a>
+ <div id="queueList" class="d-grid gap-2 mb-3"></div>
+ <div class="d-grid gap-2 mb-3">
+  <a href="label-input.html" class="btn btn-outline-primary"><i class="bi bi-plus-circle me-2"></i>TAMBAH INPUT</a>
+  <button id="printBtn" class="btn btn-primary"><i class="bi bi-printer me-2"></i>PRINT LABEL</button>
  </div>
-
- <div class="card-soft p-3 mt-3">
-  <div class="fw-bold mb-2">Aturan teks warna</div>
-  <div class="d-grid gap-2">
-   <div class="rule-chip">&lt; 6 Bulan → <b>MERAH</b></div>
-   <div class="rule-chip">6–12 Bulan → <b>KUNING</b></div>
-   <div class="rule-chip">1–2 Tahun → <b>HIJAU</b></div>
-   <div class="rule-chip">&gt; 2 Tahun → <b>BIRU</b></div>
-  </div>
- </div>
-</div>
-<nav class="bottom-nav">
-<a href="index.html"><i class="bi bi-house-door"></i>Dashboard</a>
-<a href="input.html"><i class="bi bi-upc-scan"></i>Input Exp</a>
-<a class="active" href="label-expired.html"><i class="bi bi-tags-fill"></i>Label</a>
-<a href="index.html#list"><i class="bi bi-file-earmark-text"></i>Riwayat</a>
-</nav>
-</div>
-</body></html>
+ <div class="small text-secondary mb-2">Preview A4 Landscape</div>
+ <div class="preview-wrap"><div id="printSheet" class="sheet"></div></div>
+</div></div>
+<script>
+const $=id=>document.getElementById(id);
+let queue=JSON.parse(localStorage.getItem("expicheckLabelQueue")||"[]");
+function esc(v){return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+function save(){localStorage.setItem("expicheckLabelQueue",JSON.stringify(queue))}
+function labelHTML(x){
+ const exp=new Date(x.exp);const d=String(exp.getDate()).padStart(2,"0"),m=String(exp.getMonth()+1).padStart(2,"0"),y=exp.getFullYear();
+ return `<div class="expired-label"><div class="title">LABEL EXPIRED</div><table><thead><tr><th>TGL</th><th>BULAN</th><th>TAHUN</th></tr></thead><tbody><tr><td>${d}</td><td>${m}</td><td>${y}</td></tr></tbody></table><div class="period-wrap"><span class="period">PERIODE EXPIRED ${esc(x.period)} • WARNA: ${esc(x.colorText||"")}</span></div></div>`
+}
+function render(){
+ $("count").textContent=queue.reduce((a,x)=>a+(Number(x.qty)||1),0);
+ if(!queue.length){$("queueList").innerHTML='<div class="text-secondary small text-center py-3">Belum ada label.</div>';$("printSheet").innerHTML="";return}
+ $("queueList").innerHTML=queue.map(x=>`<div class="queue-item"><div class="d-flex justify-content-between gap-2"><div><div class="fw-bold">${esc(x.name)}</div><div class="small text-secondary">PLU ${esc(x.plu)} • Exp ${new Date(x.exp).toLocaleDateString("id-ID")}</div><div class="small"><b>${esc(x.period)}</b> • WARNA: <b>${esc(x.colorText)}</b> • ${x.qty||1} label</div></div><button class="btn btn-sm btn-outline-danger align-self-start" data-del="${esc(x.id)}"><i class="bi bi-trash"></i></button></div></div>`).join("");
+ $("queueList").querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{queue=queue.filter(x=>x.id!==b.dataset.del);save();render()});
+ const labels=[];queue.forEach(x=>{for(let i=0;i<(Number(x.qty)||1);i++)labels.push(labelHTML(x))});$("printSheet").innerHTML=labels.join("");
+}
+$("clear").onclick=()=>{queue=[];save();render()};
+$("printBtn").onclick=()=>{if(!queue.length)return;render();window.print()};
+render();
+</script></body></html>
