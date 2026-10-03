@@ -2,6 +2,11 @@
   "name": "expicheck-notifications",
   "private": true,
   "type": "module",
-  "scripts": {"push": "node push-reminder.js"},
-  "dependencies": {"firebase-admin": "^13.0.0"}
+  "scripts": {
+    "push": "node push-reminder.js",
+    "notify": "node wa-reminder.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0"
+  }
 }

@@ -1,39 +1,61 @@
-PENGATURAN WHATSAPP OTOMATIS H-7
+EXPI CHECK - WHATSAPP OTOMATIS H-7
 
-ALUR
-- GitHub Actions berjalan setiap hari pukul 08.00 WIB.
-- Sistem mencari edItems yang tanggal expired-nya tepat 7 hari lagi.
+STATUS PERBAIKAN
+- Workflow GitHub Actions sekarang berada di .github/workflows/whatsapp-h7.yml agar dikenali GitHub Actions.
+- Script WA dipisahkan dari script FCM: wa-reminder.js.
+- package.json memiliki script "notify": "node wa-reminder.js".
+- Token Fonnte dibaca per toko dari stores/{storeid}.fonnteToken.
+- Pengiriman dilakukan server-side dari GitHub Actions, bukan browser/PWA.
+
+FUNGSI
+- GitHub Actions berjalan setiap hari pukul 08.00 WIB (01:00 UTC).
+- Sistem mencari edItems yang tanggalTarik-nya tepat 7 hari dari hari ini.
 - Data dikelompokkan berdasarkan storeid + user/NIK penginput.
-- Satu user mendapat satu pesan ringkasan untuk item miliknya di toko tersebut.
-- Setelah berhasil dikirim, item diberi waH7Date agar tidak terkirim dua kali pada hari yang sama.
+- Satu user mendapat satu pesan ringkasan untuk semua item H-7 miliknya.
+- Pengiriman hanya dilakukan jika stores/{storeid}.waActive = true.
+- Nomor WhatsApp dibaca dari users.phone (fallback: whatsapp/noWa/noWhatsapp).
+- Nomor 08xxxxxxxxxx otomatis dinormalisasi menjadi 628xxxxxxxxxx.
+- Setelah Fonnte menerima pengiriman dengan sukses, item diberi waH7Date agar tidak terkirim dua kali pada tanggal yang sama.
+- Jika pengiriman gagal, waH7Date TIDAK diisi; error disimpan di waH7LastError dan waH7Status=failed sehingga dapat dicoba lagi.
 
-PERUBAHAN DATA
-1. Register sekarang wajib memasukkan nomor WhatsApp.
-2. Field users:
-   phone: "628xxxxxxxxxx"
-3. Field edItems baru:
-   inputByNik
-   inputByName
-   inputByPhone
-4. ID edItems baru menyertakan NIK agar item user berbeda tidak tergabung:
-   storeid_userid_barcode_tanggalExpired
+GITHUB SECRET
+Repository > Settings > Secrets and variables > Actions
 
-PENGATURAN GITHUB SECRETS
-Repository > Settings > Secrets and variables > Actions > New repository secret
+Wajib:
+1. FIREBASE_SERVICE_ACCOUNT
+   Isi seluruh JSON Firebase Service Account.
 
-1. FONNTE_TOKEN
-   Isi token perangkat Fonnte.
+Tidak digunakan lagi:
+- FONNTE_TOKEN global.
 
-2. FIREBASE_SERVICE_ACCOUNT
-   Firebase Console > Project settings > Service accounts > Generate new private key.
-   Buka file JSON hasil unduhan, salin seluruh isinya sebagai value secret.
-   Jangan upload file service account ke repository.
+PENGATURAN TOKO
+Admin Panel > Kelola Toko:
+- Status Notifikasi WhatsApp = Aktif
+- Token Fonnte toko = token device Fonnte
 
-MENGETES
-- GitHub > Actions > WhatsApp H-7 Expired > Run workflow.
-- Pastikan item uji mempunyai expiredDate tepat 7 hari dari tanggal hari ini.
-- Pastikan nomor WA user aktif dan formatnya benar.
+Firestore:
+stores/{storeid}
+- storeid
+- storename
+- active
+- waActive
+- fonnteToken
 
-CATATAN DATA LAMA
-- User lama perlu ditambahkan field phone secara manual di koleksi users.
-- Item lama tanpa inputByPhone tetap dapat dikirim jika userid/inputByNik cocok dengan dokumen users yang memiliki phone.
+USER
+Firestore users/{userid} minimal:
+- active: true
+- storeid
+- phone: nomor WhatsApp aktif
+
+TEST MANUAL
+1. Pastikan ada item edItems dengan tanggalTarik tepat 7 hari dari tanggal WIB saat workflow dijalankan.
+2. Pastikan item memiliki storeid dan inputByNik/userid.
+3. Pastikan user aktif dan memiliki phone.
+4. Pastikan toko memiliki waActive=true dan fonnteToken.
+5. Pastikan perangkat Fonnte sudah terhubung/aktif.
+6. GitHub > Actions > WhatsApp H-7 Expired > Run workflow.
+7. Buka log workflow dan cari "✓ WA berhasil" atau pesan error Fonnte.
+
+CATATAN
+API Fonnte menggunakan POST ke https://api.fonnte.com/send dengan Authorization token, target, dan message.
+Token tidak pernah dimasukkan ke frontend/PWA.
