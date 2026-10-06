@@ -424,22 +424,16 @@ for (const user of users.values()) {
     );
   }
 
-  // Tidak ada apa pun untuk dikirim.
-  if (!rack && !alert) {
-    console.log(
-      `SKIP ${user.nama}: tidak ada jadwal / RH hari ini`
-    );
-
-    skipNoReminder++;
-    continue;
-  }
-
-
   // ====================================================
   // SUSUN PESAN
   // ====================================================
 
-  const bodyParts = [];
+  // Pengingat pagi dikirim setiap hari kepada user aktif yang
+  // sudah mengaktifkan push notification, meskipun hari ini
+  // tidak ada jadwal rak atau item RH.
+  const bodyParts = [
+    "Pengingat pagi: lakukan cek expired hari ini."
+  ];
 
   if (rack) {
     bodyParts.push(
