@@ -286,9 +286,9 @@ for (const [key, items] of grouped.entries()) {
     "",
     `Total: ${items.length} item`,
     "",
-    "Mohon dilakukan pengecekan sesuai prosedur toko.",
+    "Segera lakukan pengecekan.",
     "",
-    "ExpiCheck",
+    "Terimakasih",
   ].join("\n");
 
   console.log("----------------------------------------");
