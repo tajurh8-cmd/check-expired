@@ -46,7 +46,6 @@ firebase.initializeApp({
   appId: "1:623211397382:web:db9a7bd4abcc7f44261e87"
 });
 
-const messaging = firebase.messaging();
 messaging.onBackgroundMessage(payload => {
   const data = payload.data || {};
   const title = data.title || "ExpiCheck";
