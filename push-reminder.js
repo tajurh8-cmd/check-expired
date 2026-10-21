@@ -554,17 +554,65 @@ for (const user of users.values()) {
         `${user.nama}: sukses ${result.successCount}, gagal ${result.failureCount}`
       );
 
-      result.responses.forEach(
-        (response, index) => {
-          if (!response.success) {
-            console.warn(
-              `TOKEN GAGAL ${user.nama} [${i + index}] →`,
-              response.error?.code ||
-                response.error?.message
-            );
+      const invalidTokens = [];
+      const knownValidTokens = [];
+
+      result.responses.forEach((response, index) => {
+        const token = batch[index];
+
+        if (response.success) {
+          knownValidTokens.push(token);
+          return;
+        }
+
+        const errorCode = response.error?.code;
+
+        console.warn(
+          `TOKEN GAGAL ${user.nama} [${i + index}] →`,
+          errorCode || response.error?.message
+        );
+
+        if (
+          errorCode === "messaging/registration-token-not-registered" ||
+          errorCode === "messaging/invalid-registration-token"
+        ) {
+          invalidTokens.push(token);
+        }
+      });
+
+      // Bersihkan hanya token yang dipastikan sudah tidak valid oleh FCM.
+      // Token lain yang masih valid tidak ikut dihapus.
+      if (invalidTokens.length > 0) {
+        const userRef = db.collection("users").doc(user.docId);
+        const updates = {
+          fcmTokens: admin.firestore.FieldValue.arrayRemove(
+            ...invalidTokens
+          ),
+        };
+
+        // Jika token utama tidak valid, ganti dengan token yang baru
+        // terbukti berhasil pada batch ini; jika tidak ada, hapus field
+        // utama. Token lain di fcmTokens tetap dipertahankan.
+        if (invalidTokens.includes(user.fcmToken)) {
+          if (knownValidTokens.length > 0) {
+            updates.fcmToken = knownValidTokens[0];
+          } else {
+            updates.fcmToken = admin.firestore.FieldValue.delete();
           }
         }
-      );
+
+        try {
+          await userRef.update(updates);
+          console.log(
+            `TOKEN DIBERSIHKAN ${user.nama}: ${invalidTokens.length} token tidak valid`
+          );
+        } catch (cleanupError) {
+          console.error(
+            `GAGAL MEMBERSIHKAN TOKEN ${user.nama}:`,
+            cleanupError.code || cleanupError.message
+          );
+        }
+      }
     } catch (error) {
       failedTokens += batch.length;
 
