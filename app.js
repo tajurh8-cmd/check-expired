@@ -31,6 +31,7 @@ const newProductBarcode = document.getElementById("newProductBarcode");
 const btnCreateProduct = document.getElementById("btnCreateProduct");
 const newProductMsg = document.getElementById("newProductMsg");
 const scheduleInfo = document.getElementById("scheduleInfo");
+const returnPreview = document.getElementById("returnPreview");
 
 const currentUser = JSON.parse(localStorage.getItem("user") || "null");
 if (!currentUser?.storeid) {
@@ -55,6 +56,21 @@ function tanggalTarik(exp, rh) {
   const x = new Date(exp);
   x.setDate(x.getDate() - Number(rh || 30));
   return x;
+}
+
+// Tanggal retur dihitung dari tanggal input/scan (createdAt), tanpa menambah field database.
+function tanggalReturDariHariIni(rh) {
+  const x = new Date();
+  x.setHours(0, 0, 0, 0);
+  x.setDate(x.getDate() + Number(rh || 30));
+  return x;
+}
+function tampilkanPreviewRetur(rh) {
+  if (!returnPreview) return;
+  const hari = Number(rh || 30);
+  const tgl = tanggalReturDariHariIni(hari);
+  returnPreview.textContent = `Pengingat retur: ${tgl.toLocaleDateString("id-ID", {day:"2-digit", month:"long", year:"numeric"})} (H+${hari} dari hari scan/input).`;
+  returnPreview.classList.remove("d-none");
 }
 
 function normalizeCode(v) {
@@ -190,6 +206,7 @@ async function lookupByField(field, value, mode) {
   if (snap.empty) {
     descEl.value = "❌ Tidak ditemukan";
     descEl.dataset.rh = "";
+    returnPreview?.classList.add("d-none");
     newProductBox.classList.remove("d-none");
     newProductName.value = "";
     newProductRh.value = "";
@@ -220,6 +237,7 @@ async function lookupByField(field, value, mode) {
   barcodeEl.value = selectedProduct.PLU || value;
   descEl.value = selectedProduct.DESKRIPSI;
   descEl.dataset.rh = selectedProduct.RH;
+  tampilkanPreviewRetur(selectedProduct.RH);
   newProductBox.classList.add("d-none");
   newProductMsg.textContent = "";
   return true;
@@ -315,6 +333,7 @@ btnCreateProduct.onclick = async () => {
     barcodeEl.value = plu;
     descEl.value = name;
     descEl.dataset.rh = rh;
+    tampilkanPreviewRetur(rh);
     newProductBox.classList.add("d-none");
     newProductMsg.textContent = "";
     expiredEl.focus();
@@ -590,6 +609,7 @@ btnSave.onclick = async () => {
     barcodeEl.value = "";
     descEl.value = "";
     descEl.dataset.rh = "";
+    returnPreview?.classList.add("d-none");
     newProductBox.classList.add("d-none");
     expiredEl.value = "";
     qtyEl.value = "";
