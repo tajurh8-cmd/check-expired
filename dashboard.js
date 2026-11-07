@@ -17,17 +17,16 @@ const currentUser=JSON.parse(localStorage.getItem("user")||"null");
 if(!currentUser?.storeid){localStorage.removeItem("user");location.href="login.html";throw new Error("Sesi toko tidak valid");}
 const fmt=d=>d.toLocaleDateString("id-ID",{day:"2-digit",month:"long",year:"numeric"});
 const sisaHari=t=>Math.ceil((new Date(t.getFullYear(),t.getMonth(),t.getDate())-new Date(new Date().getFullYear(),new Date().getMonth(),new Date().getDate()))/86400000);
-const tanggalRetur=x=>{const dasar=x.createdAt?.toDate?x.createdAt.toDate():new Date(x.createdAt||Date.now());const d=new Date(dasar.getFullYear(),dasar.getMonth(),dasar.getDate());d.setDate(d.getDate()+(Number(x.RH)||30));return d;};
 const warna=s=>s<0?["b-abu","LEWAT","bg-secondary"]:s<180?["b-merah","< 6 Bulan","bg-danger"]:s<365?["b-kuning","6–12 Bulan","bg-warning"]:s<730?["b-hijau","1–2 Tahun","bg-success"]:["b-biru","> 2 Tahun","bg-primary"];
 const listEl=document.getElementById("list"),totalQtyEl=document.getElementById("totalQty"),totalItemEl=document.getElementById("totalItem"),bawah6El=document.getElementById("bawah6"),bulan6_12El=document.getElementById("bulan6_12"),tahun1_2El=document.getElementById("tahun1_2"),atas2El=document.getElementById("atas2");
 let loading=false;
 async function loadDashboard(force=false){
  if(loading)return;const cacheKey=`dashboard_${currentUser.storeid}`;const cached=sessionStorage.getItem(cacheKey);
- if(!force&&cached){try{const p=JSON.parse(cached);if(Date.now()-p.savedAt<60000){const cachedItems=p.items.map(x=>{const retur=x.retur?new Date(x.retur):tanggalRetur(x);return {...x,exp:new Date(x.exp),tarik:new Date(x.tarik),retur,sRetur:sisaHari(retur)};});render(cachedItems);runDailyNotifications(cachedItems);return;}}catch(_){}}
+ if(!force&&cached){try{const p=JSON.parse(cached);if(Date.now()-p.savedAt<60000){const cachedItems=p.items.map(x=>({...x,exp:new Date(x.exp),tarik:new Date(x.tarik)}));render(cachedItems);runDailyNotifications(cachedItems);return;}}catch(_){}}
  loading=true;listEl.innerHTML='<div class="alert alert-light text-center">Memuat data...</div>';
- try{const qItems=query(collection(db,"edItems"),where("storeid","==",currentUser.storeid),limit(500));const snap=await getDocs(qItems);const items=[];snap.forEach(d=>{const x=d.data();if(!x.expiredDate||!x.tanggalTarik)return;const exp=x.expiredDate.toDate(),tarik=x.tanggalTarik.toDate(); if (tarik.getTime() < new Date().setHours(0,0,0,0)) return; const retur=tanggalRetur(x);items.push({id:d.id,...x,exp,tarik,retur,s:sisaHari(tarik),sRetur:sisaHari(retur)});});sessionStorage.setItem(cacheKey,JSON.stringify({savedAt:Date.now(),items:items.map(x=>({...x,exp:x.exp.toISOString(),tarik:x.tarik.toISOString(),retur:x.retur.toISOString()}))}));render(items); await runDailyNotifications(items);}catch(err){console.error(err);listEl.innerHTML=`<div class="alert alert-danger">Gagal membaca data: ${esc(err.message)}</div>`;}finally{loading=false;}
+ try{const qItems=query(collection(db,"edItems"),where("storeid","==",currentUser.storeid),limit(500));const snap=await getDocs(qItems);const items=[];snap.forEach(d=>{const x=d.data();if(!x.expiredDate||!x.tanggalTarik)return;const exp=x.expiredDate.toDate(),tarik=x.tanggalTarik.toDate(); if (tarik.getTime() < new Date().setHours(0,0,0,0)) return; items.push({id:d.id,...x,exp,tarik,s:sisaHari(tarik)});});sessionStorage.setItem(cacheKey,JSON.stringify({savedAt:Date.now(),items:items.map(x=>({...x,exp:x.exp.toISOString(),tarik:x.tarik.toISOString()}))}));render(items); await runDailyNotifications(items);}catch(err){console.error(err);listEl.innerHTML=`<div class="alert alert-danger">Gagal membaca data: ${esc(err.message)}</div>`;}finally{loading=false;}
 }
-function render(items){let tq=0,b6=0,b612=0,t12=0,a2=0;items.forEach(x=>{const q=Number(x.qty)||0;tq+=q;if(x.s<180)b6+=q;else if(x.s<365)b612+=q;else if(x.s<730)t12+=q;else a2+=q;});totalQtyEl.innerText=tq;totalItemEl.innerText=items.length;bawah6El.innerText=b6;bulan6_12El.innerText=b612;tahun1_2El.innerText=t12;atas2El.innerText=a2;items.sort((a,b)=>a.s-b.s||String(a.deskripsi||"").localeCompare(String(b.deskripsi||"")));if(!items.length){listEl.innerHTML=`<div class="alert alert-light text-center">Belum ada data untuk toko ${esc(currentUser.storeid)}.</div>`;return;}listEl.innerHTML=items.map(x=>{const w=warna(x.s);return `<div class="card item-card ${w[0]}"><div class="card-body"><div class="d-flex justify-content-between gap-2"><b>${esc(x.deskripsi||"-")}</b><div class="label text-end">User: <b>${esc(x.user||"-")}</b></div></div><div style="font-size:18px;font-weight:700">Qty: ${Number(x.qty)||0}</div><div class="label mt-1">${esc(x.barcode||"-")} • Rak <b>${esc(x.rak||"-")}</b></div><div class="label mt-1">Expired: ${fmt(x.exp)}</div><div class="label">Tanggal Tarik: ${fmt(x.tarik)}</div><div class="label">RH: <b>${Number(x.RH)||30}</b> hari</div><div class="label text-primary fw-semibold">Jadwal retur: ${fmt(x.retur)} • ${x.sRetur<0?"Lewat "+Math.abs(x.sRetur)+" hari":"Sisa "+x.sRetur+" hari"}</div><div class="d-flex justify-content-between mt-2"><div class="umur">${x.s<0?"LEWAT "+Math.abs(x.s)+" hari":"Sisa "+x.s+" hari"}</div><div class="d-flex gap-2"><span class="pill ${w[2]}">${w[1]}</span><button class="btn btn-sm btn-outline-danger" onclick="hapus('${x.id}')">🗑</button></div></div></div></div>`;}).join("");}
+function render(items){let tq=0,b6=0,b612=0,t12=0,a2=0;items.forEach(x=>{const q=Number(x.qty)||0;tq+=q;if(x.s<180)b6+=q;else if(x.s<365)b612+=q;else if(x.s<730)t12+=q;else a2+=q;});totalQtyEl.innerText=tq;totalItemEl.innerText=items.length;bawah6El.innerText=b6;bulan6_12El.innerText=b612;tahun1_2El.innerText=t12;atas2El.innerText=a2;items.sort((a,b)=>a.s-b.s||String(a.deskripsi||"").localeCompare(String(b.deskripsi||"")));if(!items.length){listEl.innerHTML=`<div class="alert alert-light text-center">Belum ada data untuk toko ${esc(currentUser.storeid)}.</div>`;return;}listEl.innerHTML=items.map(x=>{const w=warna(x.s);return `<div class="card item-card ${w[0]}"><div class="card-body"><div class="d-flex justify-content-between gap-2"><b>${esc(x.deskripsi||"-")}</b><div class="label text-end">User: <b>${esc(x.user||"-")}</b></div></div><div style="font-size:18px;font-weight:700">Qty: ${Number(x.qty)||0}</div><div class="label mt-1">${esc(x.barcode||"-")} • Rak <b>${esc(x.rak||"-")}</b></div><div class="label mt-1">Expired: ${fmt(x.exp)}</div><div class="label">Tanggal Tarik: ${fmt(x.tarik)}</div><div class="label">RH: <b>${Number(x.RH)||30}</b> hari</div><div class="d-flex justify-content-between mt-2"><div class="umur">${x.s<0?"LEWAT "+Math.abs(x.s)+" hari":"Sisa "+x.s+" hari"}</div><div class="d-flex gap-2"><span class="pill ${w[2]}">${w[1]}</span><button class="btn btn-sm btn-outline-danger" onclick="hapus('${x.id}')">🗑</button></div></div></div></div>`;}).join("");}
 window.refreshDashboard=()=>{sessionStorage.removeItem(`dashboard_${currentUser.storeid}`);loadDashboard(true);};
 window.hapus=async id=>{
   const ok=await ExpiUI.confirm("Item yang sudah dihapus tidak dapat dikembalikan.",{title:"Hapus item?",okText:"Hapus",cancelText:"Batal",danger:true});
@@ -69,12 +68,10 @@ async function getTodayRack(){
 async function runDailyNotifications(items){
   const rack=await getTodayRack();
   const alertItems=items.filter(x=>[7,3,1,0].includes(Number(x.s)));
-  const returnAlertItems=items.filter(x=>[7,3,1,0].includes(Number(x.sRetur)));
   if(todayNotice){
     const parts=[];
     parts.push(rack?`<div><b>Jadwal hari ini:</b> ${esc(rack)}</div>`:`<div><b>Jadwal hari ini:</b> OFF / belum dijadwalkan</div>`);
-    if(alertItems.length)parts.push(`<div class="mt-1 text-danger"><b>${alertItems.length} item</b> mendekati/masuk tanggal tarik expired.</div>`);
-    if(returnAlertItems.length)parts.push(`<div class="mt-1 text-primary"><b>${returnAlertItems.length} item</b> mendekati/masuk jadwal retur berdasarkan RH.</div>`);
+    if(alertItems.length)parts.push(`<div class="mt-1 text-danger"><b>${alertItems.length} item</b> mendekati/masuk tanggal tarik.</div>`);
     todayNotice.innerHTML=parts.join(""); todayNotice.classList.remove("d-none");
   }
   if(Notification.permission!=="granted")return;
@@ -83,13 +80,8 @@ async function runDailyNotifications(items){
   if(rack)await showSystemNotification("Jadwal ExpiCheck hari ini",`Cek rak: ${rack}`,`schedule-${ymd()}`);
   if(alertItems.length){
     const h0=alertItems.filter(x=>x.s===0).length;
-    const body=h0?`${h0} item masuk tanggal tarik expired hari ini. Total ${alertItems.length} item perlu perhatian.`:`${alertItems.length} item akan masuk tanggal tarik expired dalam H-7/H-3/H-1.`;
+    const body=h0?`${h0} item masuk tanggal tarik hari ini. Total ${alertItems.length} item perlu perhatian.`:`${alertItems.length} item akan masuk tanggal tarik dalam H-7/H-3/H-1.`;
     await showSystemNotification("Pengingat masa tarik",body,`rh-${ymd()}`);
-  }
-  if(returnAlertItems.length){
-    const h0=returnAlertItems.filter(x=>x.sRetur===0).length;
-    const body=h0?`${h0} item mencapai jadwal retur hari ini berdasarkan RH.`:`${returnAlertItems.length} item mendekati jadwal retur (H-7/H-3/H-1).`;
-    await showSystemNotification("Pengingat jadwal retur",body,`retur-${ymd()}`);
   }
   localStorage.setItem(dailyKey,"1");
 }

@@ -57,19 +57,6 @@ function tanggalTarik(exp, rh) {
   return x;
 }
 
-function hitungHariKeExpired(exp) {
-  const today = new Date();
-  const todayUtc = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
-  const expUtc = Date.UTC(exp.getFullYear(), exp.getMonth(), exp.getDate());
-  return Math.round((expUtc - todayUtc) / 86400000);
-}
-
-function formatTanggalIndonesia(date) {
-  return new Intl.DateTimeFormat("id-ID", {
-    day: "numeric", month: "long", year: "numeric"
-  }).format(date);
-}
-
 function normalizeCode(v) {
   return String(v || "").trim();
 }
@@ -522,22 +509,28 @@ btnSave.onclick = async () => {
       throw new Error("Produk tidak ditemukan di master datasumber");
     }
 
-    // Pemberitahuan sebelum simpan: hitung jarak tanggal expired dari tanggal scan/hari ini.
-    // Tidak mengubah perhitungan Tanggal Tarik maupun data yang ditampilkan di dashboard.
-    const sisaHariExpired = hitungHariKeExpired(exp);
+    // Notice sebelum simpan: bandingkan tanggal expired dengan hari scan/input saat ini.
+    // Hanya konfirmasi; tidak mengubah tanggal expired, tanggal tarik, RH, atau dashboard.
+    const today = new Date();
+    const todayUtc = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+    const expiredUtc = Date.UTC(exp.getFullYear(), exp.getMonth(), exp.getDate());
+    const selisihHari = Math.round((expiredUtc - todayUtc) / 86400000);
+    const formatTanggal = d => d.toLocaleDateString("id-ID", {
+      day: "2-digit", month: "long", year: "numeric"
+    });
     let noticeExpired;
-    if (sisaHariExpired > 0) {
-      noticeExpired = `Produk ini akan expired dalam ${sisaHariExpired} hari (tanggal ${formatTanggalIndonesia(exp)}).\n\nLanjut simpan data?`;
-    } else if (sisaHariExpired === 0) {
-      noticeExpired = `PERHATIAN: Produk ini expired HARI INI (${formatTanggalIndonesia(exp)}).\n\nLanjut simpan data?`;
+    if (selisihHari > 0) {
+      noticeExpired = `Tanggal expired: ${formatTanggal(exp)}\nHari ini: ${formatTanggal(today)}\n\nProduk masih memiliki masa ${selisihHari} hari sebelum expired. Lanjut simpan?`;
+    } else if (selisihHari === 0) {
+      noticeExpired = `Tanggal expired: ${formatTanggal(exp)}\nHari ini: ${formatTanggal(today)}\n\nPERINGATAN: Produk expired HARI INI. Tetap lanjut simpan?`;
     } else {
-      noticeExpired = `PERHATIAN: Produk ini sudah expired ${Math.abs(sisaHariExpired)} hari yang lalu (tanggal ${formatTanggalIndonesia(exp)}).\n\nLanjut simpan data?`;
+      noticeExpired = `Tanggal expired: ${formatTanggal(exp)}\nHari ini: ${formatTanggal(today)}\n\nPERINGATAN: Produk sudah expired ${Math.abs(selisihHari)} hari yang lalu. Tetap lanjut simpan?`;
     }
     const lanjutSimpan = await ExpiUI.confirm(noticeExpired, {
-      title: "Pemberitahuan Expired",
+      title: selisihHari < 0 ? "Produk Sudah Expired" : selisihHari === 0 ? "Expired Hari Ini" : "Pemeriksaan Tanggal Expired",
       okText: "Lanjut Simpan",
       cancelText: "Periksa Lagi",
-      danger: sisaHariExpired <= 0
+      danger: selisihHari <= 0
     });
     if (!lanjutSimpan) return;
 
