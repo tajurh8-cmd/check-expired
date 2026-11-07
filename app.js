@@ -31,7 +31,6 @@ const newProductBarcode = document.getElementById("newProductBarcode");
 const btnCreateProduct = document.getElementById("btnCreateProduct");
 const newProductMsg = document.getElementById("newProductMsg");
 const scheduleInfo = document.getElementById("scheduleInfo");
-const returnPreview = document.getElementById("returnPreview");
 
 const currentUser = JSON.parse(localStorage.getItem("user") || "null");
 if (!currentUser?.storeid) {
@@ -58,19 +57,17 @@ function tanggalTarik(exp, rh) {
   return x;
 }
 
-// Tanggal retur dihitung dari tanggal input/scan (createdAt), tanpa menambah field database.
-function tanggalReturDariHariIni(rh) {
-  const x = new Date();
-  x.setHours(0, 0, 0, 0);
-  x.setDate(x.getDate() + Number(rh || 30));
-  return x;
+function hitungHariKeExpired(exp) {
+  const today = new Date();
+  const todayUtc = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+  const expUtc = Date.UTC(exp.getFullYear(), exp.getMonth(), exp.getDate());
+  return Math.round((expUtc - todayUtc) / 86400000);
 }
-function tampilkanPreviewRetur(rh) {
-  if (!returnPreview) return;
-  const hari = Number(rh || 30);
-  const tgl = tanggalReturDariHariIni(hari);
-  returnPreview.textContent = `Pengingat retur: ${tgl.toLocaleDateString("id-ID", {day:"2-digit", month:"long", year:"numeric"})} (H+${hari} dari hari scan/input).`;
-  returnPreview.classList.remove("d-none");
+
+function formatTanggalIndonesia(date) {
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "numeric", month: "long", year: "numeric"
+  }).format(date);
 }
 
 function normalizeCode(v) {
@@ -206,7 +203,6 @@ async function lookupByField(field, value, mode) {
   if (snap.empty) {
     descEl.value = "❌ Tidak ditemukan";
     descEl.dataset.rh = "";
-    returnPreview?.classList.add("d-none");
     newProductBox.classList.remove("d-none");
     newProductName.value = "";
     newProductRh.value = "";
@@ -237,7 +233,6 @@ async function lookupByField(field, value, mode) {
   barcodeEl.value = selectedProduct.PLU || value;
   descEl.value = selectedProduct.DESKRIPSI;
   descEl.dataset.rh = selectedProduct.RH;
-  tampilkanPreviewRetur(selectedProduct.RH);
   newProductBox.classList.add("d-none");
   newProductMsg.textContent = "";
   return true;
@@ -333,7 +328,6 @@ btnCreateProduct.onclick = async () => {
     barcodeEl.value = plu;
     descEl.value = name;
     descEl.dataset.rh = rh;
-    tampilkanPreviewRetur(rh);
     newProductBox.classList.add("d-none");
     newProductMsg.textContent = "";
     expiredEl.focus();
@@ -528,6 +522,25 @@ btnSave.onclick = async () => {
       throw new Error("Produk tidak ditemukan di master datasumber");
     }
 
+    // Pemberitahuan sebelum simpan: hitung jarak tanggal expired dari tanggal scan/hari ini.
+    // Tidak mengubah perhitungan Tanggal Tarik maupun data yang ditampilkan di dashboard.
+    const sisaHariExpired = hitungHariKeExpired(exp);
+    let noticeExpired;
+    if (sisaHariExpired > 0) {
+      noticeExpired = `Produk ini akan expired dalam ${sisaHariExpired} hari (tanggal ${formatTanggalIndonesia(exp)}).\n\nLanjut simpan data?`;
+    } else if (sisaHariExpired === 0) {
+      noticeExpired = `PERHATIAN: Produk ini expired HARI INI (${formatTanggalIndonesia(exp)}).\n\nLanjut simpan data?`;
+    } else {
+      noticeExpired = `PERHATIAN: Produk ini sudah expired ${Math.abs(sisaHariExpired)} hari yang lalu (tanggal ${formatTanggalIndonesia(exp)}).\n\nLanjut simpan data?`;
+    }
+    const lanjutSimpan = await ExpiUI.confirm(noticeExpired, {
+      title: "Pemberitahuan Expired",
+      okText: "Lanjut Simpan",
+      cancelText: "Periksa Lagi",
+      danger: sisaHariExpired <= 0
+    });
+    if (!lanjutSimpan) return;
+
     const tarik = tanggalTarik(exp, rh);
     const expKey = exp.toISOString().slice(0, 10).replace(/-/g, "");
     const plu = String(selectedProduct?.PLU || barcode).trim();
@@ -609,7 +622,6 @@ btnSave.onclick = async () => {
     barcodeEl.value = "";
     descEl.value = "";
     descEl.dataset.rh = "";
-    returnPreview?.classList.add("d-none");
     newProductBox.classList.add("d-none");
     expiredEl.value = "";
     qtyEl.value = "";
