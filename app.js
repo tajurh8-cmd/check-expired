@@ -523,13 +523,13 @@ btnSave.onclick = async () => {
     let judulNotice;
     if (selisihHari > 0) {
       judulNotice = "Pemeriksaan Tanggal Expired";
-      pesanNotice = `Tanggal expired: ${formatTanggalNotice(exp)}\\nHari ini: ${formatTanggalNotice(today)}\\n\\nProduk masih memiliki masa ${selisihHari} hari sebelum expired. Lanjut simpan?`;
+      pesanNotice = `Tanggal expired: ${formatTanggalNotice(exp)}\nHari ini: ${formatTanggalNotice(today)}\n\nProduk masih memiliki masa ${selisihHari} hari sebelum expired. Lanjut simpan?`;
     } else if (selisihHari === 0) {
       judulNotice = "Expired Hari Ini";
-      pesanNotice = `Tanggal expired: ${formatTanggalNotice(exp)}\\nHari ini: ${formatTanggalNotice(today)}\\n\\nPERINGATAN: Produk expired HARI INI. Tetap lanjut simpan?`;
+      pesanNotice = `Tanggal expired: ${formatTanggalNotice(exp)}\nHari ini: ${formatTanggalNotice(today)}\n\nPERINGATAN: Produk expired HARI INI. Tetap lanjut simpan?`;
     } else {
       judulNotice = "Produk Sudah Expired";
-      pesanNotice = `Tanggal expired: ${formatTanggalNotice(exp)}\\nHari ini: ${formatTanggalNotice(today)}\\n\\nPERINGATAN: Produk sudah expired ${Math.abs(selisihHari)} hari yang lalu. Tetap lanjut simpan?`;
+      pesanNotice = `Tanggal expired: ${formatTanggalNotice(exp)}\nHari ini: ${formatTanggalNotice(today)}\n\nPERINGATAN: Produk sudah expired ${Math.abs(selisihHari)} hari yang lalu. Tetap lanjut simpan?`;
     }
 
     const lanjutSimpan = await ExpiUI.confirm(pesanNotice, {
