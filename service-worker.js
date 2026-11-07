@@ -1,4 +1,4 @@
-const CACHE_NAME = "expicheck-label-separate-v3";
+const CACHE_NAME = "expicheck-retur-notice-v4";
 const APP_SHELL = [
   "./", "./login.html", "./index.html", "./input.html", "./jadwal.html", "./label-expired.html", "./admin.html",
   "./login.js", "./dashboard.js", "./app.js", "./jadwal.js", "./admin.js",

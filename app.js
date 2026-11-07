@@ -509,25 +509,31 @@ btnSave.onclick = async () => {
       throw new Error("Produk tidak ditemukan di master datasumber");
     }
 
-    // Notice sebelum simpan: bandingkan tanggal expired dengan hari scan/input saat ini.
-    // Hanya konfirmasi; tidak mengubah tanggal expired, tanggal tarik, RH, atau dashboard.
+    // Konfirmasi sebelum simpan: hitung jarak tanggal expired terhadap tanggal scan/input hari ini.
+    // Tidak mengubah expiredDate, tanggalTarik, RH, atau struktur dokumen Firestore.
     const today = new Date();
     const todayUtc = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
     const expiredUtc = Date.UTC(exp.getFullYear(), exp.getMonth(), exp.getDate());
     const selisihHari = Math.round((expiredUtc - todayUtc) / 86400000);
-    const formatTanggal = d => d.toLocaleDateString("id-ID", {
+    const formatTanggalNotice = d => d.toLocaleDateString("id-ID", {
       day: "2-digit", month: "long", year: "numeric"
     });
-    let noticeExpired;
+
+    let pesanNotice;
+    let judulNotice;
     if (selisihHari > 0) {
-      noticeExpired = `Tanggal expired: ${formatTanggal(exp)}\nHari ini: ${formatTanggal(today)}\n\nProduk masih memiliki masa ${selisihHari} hari sebelum expired. Lanjut simpan?`;
+      judulNotice = "Pemeriksaan Tanggal Expired";
+      pesanNotice = `Tanggal expired: ${formatTanggalNotice(exp)}\\nHari ini: ${formatTanggalNotice(today)}\\n\\nProduk masih memiliki masa ${selisihHari} hari sebelum expired. Lanjut simpan?`;
     } else if (selisihHari === 0) {
-      noticeExpired = `Tanggal expired: ${formatTanggal(exp)}\nHari ini: ${formatTanggal(today)}\n\nPERINGATAN: Produk expired HARI INI. Tetap lanjut simpan?`;
+      judulNotice = "Expired Hari Ini";
+      pesanNotice = `Tanggal expired: ${formatTanggalNotice(exp)}\\nHari ini: ${formatTanggalNotice(today)}\\n\\nPERINGATAN: Produk expired HARI INI. Tetap lanjut simpan?`;
     } else {
-      noticeExpired = `Tanggal expired: ${formatTanggal(exp)}\nHari ini: ${formatTanggal(today)}\n\nPERINGATAN: Produk sudah expired ${Math.abs(selisihHari)} hari yang lalu. Tetap lanjut simpan?`;
+      judulNotice = "Produk Sudah Expired";
+      pesanNotice = `Tanggal expired: ${formatTanggalNotice(exp)}\\nHari ini: ${formatTanggalNotice(today)}\\n\\nPERINGATAN: Produk sudah expired ${Math.abs(selisihHari)} hari yang lalu. Tetap lanjut simpan?`;
     }
-    const lanjutSimpan = await ExpiUI.confirm(noticeExpired, {
-      title: selisihHari < 0 ? "Produk Sudah Expired" : selisihHari === 0 ? "Expired Hari Ini" : "Pemeriksaan Tanggal Expired",
+
+    const lanjutSimpan = await ExpiUI.confirm(pesanNotice, {
+      title: judulNotice,
       okText: "Lanjut Simpan",
       cancelText: "Periksa Lagi",
       danger: selisihHari <= 0
